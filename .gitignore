@@ -1,0 +1,25 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+
+# Build / publish output
+[Pp]ublish/
+*.binlog
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# OS noise
+Thumbs.db
+desktop.ini
+
+# Never commit real keys, just in case anyone drops one in the tree
+*.pem
+id_rsa
+id_ed25519
+*.ppk
