@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "kind": "design-reference-not-runtime-evidence",
+  "baseline": "d9b3ce8d2e64fc2f1c978f4a97d4aaecacb8457f",
+  "framework": "Windows App SDK / WinUI 3",
+  "reference": "workspace.html",
+  "viewportsDIP": [
+    [
+      1200,
+      800
+    ],
+    [
+      640,
+      480
+    ]
+  ],
+  "displayScales": [
+    1,
+    1.25,
+    1.5,
+    2
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "languages": [
+    "en",
+    "yue",
+    "both"
+  ],
+  "states": [
+    "ready",
+    "empty",
+    "working",
+    "error",
+    "locked",
+    "review",
+    "unknown-host",
+    "changed-host",
+    "cancelling",
+    "cancelled",
+    "partial",
+    "success"
+  ],
+  "screens": [
+    {
+      "id": "connections",
+      "primaryAction": "connections.install",
+      "sections": [
+        "connection",
+        "key",
+        "review"
+      ],
+      "reference": "detailed"
+    },
+    {
+      "id": "keys",
+      "primaryAction": "keys.generate",
+      "sections": [
+        "inventory",
+        "details",
+        "generate",
+        "import"
+      ],
+      "reference": "architecture",
+      "workflowStates": [
+        "empty",
+        "generate",
+        "output-review",
+        "overwrite",
+        "generating",
+        "import",
+        "ready",
+        "invalid"
+      ]
+    },
+    {
+      "id": "results",
+      "primaryAction": "results.retry-failed",
+      "sections": [
+        "operations",
+        "phases",
+        "details"
+      ],
+      "reference": "architecture",
+      "workflowStates": [
+        "empty",
+        "running",
+        "cancel",
+        "terminal",
+        "retry-failed",
+        "export",
+        "details"
+      ]
+    },
+    {
+      "id": "tools",
+      "primaryAction": "tools.open",
+      "sections": [
+        "regex",
+        "authenticator",
+        "converter",
+        "ollama",
+        "minecraft"
+      ],
+      "reference": "architecture"
+    },
+    {
+      "id": "history",
+      "primaryAction": "history.preview-restore",
+      "sections": [
+        "revisions",
+        "notifications",
+        "diff"
+      ],
+      "reference": "architecture"
+    },
+    {
+      "id": "settings",
+      "primaryAction": "settings.apply",
+      "sections": [
+        "general",
+        "appearance",
+        "language",
+        "accessibility",
+        "narration",
+        "schedules",
+        "locks",
+        "integrations",
+        "advanced"
+      ],
+      "reference": "architecture"
+    },
+    {
+      "id": "help",
+      "primaryAction": "help.open-article",
+      "sections": [
+        "articles",
+        "changelog",
+        "support-tickets",
+        "about"
+      ],
+      "reference": "architecture"
+    }
+  ],
+  "sharedRequiredSurfaces": [
+    "tabs.current",
+    "tabs.group",
+    "tabs.groups",
+    "tabs.master",
+    "tabs.overflow",
+    "tabs.move-group",
+    "tabs.close-containing",
+    "tabs.close-not-containing",
+    "palette",
+    "context-menu",
+    "regex-workbench",
+    "appearance.layers",
+    "appearance.selection",
+    "appearance.typography",
+    "appearance.colour",
+    "appearance.geometry",
+    "appearance.effects",
+    "appearance.states",
+    "appearance.animation-transition",
+    "appearance.preview",
+    "appearance.history",
+    "lock-policy",
+    "unlock",
+    "super-confirmation",
+    "notifications",
+    "accessibility",
+    "export",
+    "picker",
+    "tabs.compact-drawer"
+  ],
+  "nativeEvidence": "unverified",
+  "independentReview": "conditional review received; design repairs awaiting re-review",
+  "referenceInteractionLimits": [
+    "No native SSH or filesystem operation",
+    "No credential data",
+    "No runtime or server installation",
+    "No complete regex evaluator",
+    "No persistence proof",
+    "No native component provenance proof",
+    "Architecture screens are not complete interaction specifications by themselves",
+    "Nested section buttons disclose intent instead of claiming native behavior"
+  ],
+  "hostTrust": {
+    "binding": [
+      "host",
+      "port",
+      "hostKeyAlgorithm",
+      "fullFingerprint"
+    ],
+    "unknown": "Explicit approval persisted and read back before continuation",
+    "changed": "Hard stop; no automatic replacement or ordinary retry",
+    "cancellation": "Remain cancelling until terminal service outcome; preserve completed SSH changes"
+  }
+}

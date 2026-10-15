@@ -19,6 +19,13 @@ public sealed class DeployResult
 public sealed class SshDeployer
 {
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(25);
+    private readonly HostTrustStore _trust;
+    private readonly Func<HostKeyApproval, bool>? _approve;
+    public SshDeployer(HostTrustStore? trust = null, Func<HostKeyApproval, bool>? approve = null)
+    {
+        _trust = trust ?? new HostTrustStore();
+        _approve = approve;
+    }
 
     /// <summary>
     /// Connect with a password (or keyboard-interactive) and install the key.
@@ -26,30 +33,28 @@ public sealed class SshDeployer
     /// </summary>
     public DeployResult InstallKey(
         string host, int port, string username, string password,
-        string publicKeyLine, Action<string> log)
+        string publicKeyLine, Action<string> log, System.Threading.CancellationToken cancellationToken = default)
     {
+        SshInput.ValidateEndpoint(host, port);
+        SshInput.ValidateUser(username);
+        publicKeyLine = SshInput.ValidatePublicKey(publicKeyLine);
         ConnectionInfo connInfo = BuildPasswordConnection(host, port, username, password);
         string? fingerprintRaw = null;
 
+        cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
+        using var cancellation = cancellationToken.Register(() => client.Dispose());
+        HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
-            // Trust-on-first-use, like ssh-copy-id. The fingerprint is captured
-            // so the verify step can pin to the same host key and so the user
-            // can eyeball it in the log.
-            e.CanTrust = true;
-            try
-            {
-                fingerprintRaw = e.FingerPrintSHA256;
-            }
-            catch
-            {
-                fingerprintRaw = null;
-            }
+            fingerprintRaw = e.FingerPrintSHA256;
+            try { e.CanTrust = _trust.Check(host, port, fingerprintRaw, _approve, e.HostKeyName); }
+            catch (HostKeyChangedException ex) { changedKey = ex; e.CanTrust = false; }
         };
 
         log($"Connecting to {username}@{host}:{port} ...");
-        client.Connect();
+        try { client.Connect(); }
+        catch when (changedKey is not null) { throw changedKey; }
         log("Authenticated with password.");
         if (fingerprintRaw is not null)
         {
@@ -57,7 +62,9 @@ public sealed class SshDeployer
         }
 
         string script = BuildInstallScript(publicKeyLine);
-        SshCommand cmd = client.RunCommand(script);
+        using SshCommand cmd = client.CreateCommand(script);
+        cmd.CommandTimeout = _timeout;
+        cmd.Execute();
 
         string stdout = (cmd.Result ?? string.Empty).Trim();
         string stderr = (cmd.Error ?? string.Empty).Trim();
@@ -94,19 +101,25 @@ public sealed class SshDeployer
     /// </summary>
     public bool VerifyKeyLogin(
         string host, int port, string username, string privateKeyPath,
-        string? expectedFingerprint, Action<string> log)
+        string? expectedFingerprint, Action<string> log, Func<string?>? passphrase = null, System.Threading.CancellationToken cancellationToken = default)
     {
         log("Verifying key-based login ...");
-        using var keyFile = new PrivateKeyFile(privateKeyPath);
+        SshInput.ValidateEndpoint(host, port);
+        SshInput.ValidateUser(username);
+        using var keyFile = OpenPrivateKey(privateKeyPath, passphrase);
         var auth = new PrivateKeyAuthenticationMethod(username, keyFile);
         var connInfo = new ConnectionInfo(host, port, username, auth) { Timeout = _timeout };
 
+        cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
+        using var cancellation = cancellationToken.Register(() => client.Dispose());
+        HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
             if (expectedFingerprint is null)
             {
-                e.CanTrust = true; // standalone test: trust-on-first-use
+                try { e.CanTrust = _trust.Check(host, port, e.FingerPrintSHA256, _approve, e.HostKeyName); }
+                catch (HostKeyChangedException ex) { changedKey = ex; e.CanTrust = false; }
             }
             else if (string.Equals(e.FingerPrintSHA256, expectedFingerprint, StringComparison.Ordinal))
             {
@@ -115,16 +128,31 @@ public sealed class SshDeployer
             else
             {
                 e.CanTrust = false;
-                log($"Host key mismatch! expected SHA256:{expectedFingerprint} but got SHA256:{e.FingerPrintSHA256}");
+                changedKey = new HostKeyChangedException(host, port, expectedFingerprint, e.FingerPrintSHA256, e.HostKeyName);
+                log("Host key mismatch. Connection stopped.");
             }
         };
-        client.Connect();
-        SshCommand cmd = client.RunCommand("echo WINSSHCOPYID_OK");
+        try { client.Connect(); }
+        catch when (changedKey is not null) { throw changedKey; }
+        using SshCommand cmd = client.CreateCommand("echo WINSSHCOPYID_OK");
+        cmd.CommandTimeout = _timeout;
+        cmd.Execute();
         client.Disconnect();
 
-        bool ok = (cmd.Result ?? string.Empty).Contains("WINSSHCOPYID_OK", StringComparison.Ordinal);
+        bool ok = cmd.ExitStatus == 0 && string.Equals((cmd.Result ?? string.Empty).Trim(), "WINSSHCOPYID_OK", StringComparison.Ordinal);
         log(ok ? "Key login verified." : "Key login did NOT succeed.");
         return ok;
+    }
+
+    private static PrivateKeyFile OpenPrivateKey(string path, Func<string?>? passphrase)
+    {
+        try { return new PrivateKeyFile(path); }
+        catch (SshPassPhraseNullOrEmptyException)
+        {
+            string? value = passphrase?.Invoke();
+            if (string.IsNullOrEmpty(value)) throw new OperationCanceledException("Private key passphrase was not provided.");
+            return new PrivateKeyFile(path, value);
+        }
     }
 
     private ConnectionInfo BuildPasswordConnection(string host, int port, string username, string password)
@@ -155,7 +183,7 @@ public sealed class SshDeployer
     // quoting and inject shell commands on the remote host.
     private static string BuildInstallScript(string publicKeyLine)
     {
-        string raw = publicKeyLine.Replace("\r", string.Empty).Replace("\n", string.Empty).Trim();
+        string raw = SshInput.ValidatePublicKey(publicKeyLine);
         string key = raw.Replace("'", "'\\''");
         var sb = new StringBuilder();
         sb.Append("set -e; ");

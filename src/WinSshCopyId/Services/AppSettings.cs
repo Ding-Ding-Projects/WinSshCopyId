@@ -13,6 +13,7 @@ namespace WinSshCopyId.Services;
 /// </summary>
 public sealed class AppSettings
 {
+    public int SchemaVersion { get; set; } = 2;
     public string Hosts { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public int Port { get; set; } = 22;
@@ -54,6 +55,28 @@ public static class SettingsStore
 
     public static string SettingsPath => Path.Combine(Directory, "settings.json");
 
+    /// <summary>Applies connection fields while retaining the user's local appearance and save preference.</summary>
+    public static AppSettings ApplyProfile(AppSettings current, AppSettings profile) => new()
+    {
+        Hosts = profile.Hosts, Username = profile.Username, Port = profile.Port,
+        KeyPath = profile.KeyPath, AddAliases = profile.AddAliases,
+        Theme = current.Theme, AutoSave = current.AutoSave,
+        RememberPassword = false, ProtectedPassword = null, App = AppMarker, SchemaVersion = 2,
+    };
+
+    public static void MigrateLegacyCredential(AppSettings settings, ICredentialStore credentials)
+    {
+        if (string.IsNullOrEmpty(settings.ProtectedPassword)) return;
+        string legacy = settings.ProtectedPassword;
+        string value = Dpapi.Unprotect(legacy) ?? throw new InvalidDataException("Legacy credential cannot be decrypted.");
+        credentials.Set("ssh-password", value);
+        if (!string.Equals(credentials.Get("ssh-password"), value, StringComparison.Ordinal))
+            throw new IOException("Credential migration could not be verified.");
+        settings.ProtectedPassword = null;
+        try { Save(settings); }
+        catch { settings.ProtectedPassword = legacy; throw; }
+    }
+
     public static AppSettings Load()
     {
         try
@@ -64,6 +87,7 @@ public static class SettingsStore
                 AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
                 if (loaded is not null)
                 {
+                    if (loaded.SchemaVersion > 2) throw new InvalidDataException("Unsupported settings version.");
                     return loaded;
                 }
             }
@@ -78,29 +102,35 @@ public static class SettingsStore
     public static void Save(AppSettings settings)
     {
         System.IO.Directory.CreateDirectory(Directory);
+        if (!string.IsNullOrEmpty(settings.ProtectedPassword))
+        {
+            var credentials = new WinCredentialStore();
+            string value = Dpapi.Unprotect(settings.ProtectedPassword) ?? throw new InvalidDataException("Legacy credential cannot be decrypted.");
+            credentials.Set("ssh-password", value);
+            if (!string.Equals(credentials.Get("ssh-password"), value, StringComparison.Ordinal))
+                throw new IOException("Credential storage verification failed.");
+        }
+        settings.SchemaVersion = 2;
         settings.App = AppMarker;
-        string json = JsonSerializer.Serialize(settings, JsonOptions);
-        File.WriteAllText(SettingsPath, json, new UTF8Encoding(false));
+        string? legacyCredential = settings.ProtectedPassword;
+        settings.ProtectedPassword = null;
+        string json;
+        try { json = JsonSerializer.Serialize(settings, JsonOptions); }
+        finally { settings.ProtectedPassword = legacyCredential; }
+        AtomicFile.Write(SettingsPath, json);
     }
 
     /// <summary>Write a portable profile to <paramref name="path"/> with no password.</summary>
     public static void Export(string path, AppSettings settings)
     {
-        var portable = new AppSettings
+        var portable = new
         {
-            Hosts = settings.Hosts,
-            Username = settings.Username,
-            Port = settings.Port,
-            KeyPath = settings.KeyPath,
-            AddAliases = settings.AddAliases,
-            Theme = settings.Theme,
-            AutoSave = settings.AutoSave,
-            RememberPassword = false,
-            ProtectedPassword = null,
+            SchemaVersion = 2,
+            settings.Hosts, settings.Username, settings.Port, settings.KeyPath, settings.AddAliases,
             App = AppMarker,
         };
         string json = JsonSerializer.Serialize(portable, JsonOptions);
-        File.WriteAllText(path, json, new UTF8Encoding(false));
+        AtomicFile.Write(path, json);
     }
 
     public static AppSettings Import(string path)
@@ -119,7 +149,13 @@ public static class SettingsStore
         {
             throw new InvalidDataException("That file is not a WinSshCopyId profile.");
         }
-        // Imported profiles never carry a password.
+        if (loaded.SchemaVersion is < 1 or > 2) throw new InvalidDataException("Unsupported profile version.");
+        _ = HostTarget.ParseList(loaded.Hosts, loaded.Port);
+        if (!string.IsNullOrEmpty(loaded.Username)) SshInput.ValidateUser(loaded.Username);
+        foreach (var target in HostTarget.ParseList(loaded.Hosts, loaded.Port)) SshInput.ValidateEndpoint(target.Host, target.Port);
+        // Imported profiles never carry credentials or appearance preferences.
+        loaded.Theme = "System";
+        loaded.AutoSave = true;
         loaded.ProtectedPassword = null;
         loaded.RememberPassword = false;
         return loaded;
