@@ -41,17 +41,25 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/evidence | Out-Null
           @{runId='${{ github.run_id }}';sourceCommit='${{ github.sha }}';jobStatus=$env:DELIVERY_JOB_STATUS;runner='windows-2022';runAttempt='${{ github.run_attempt }}'} | ConvertTo-Json | Set-Content artifacts/evidence/run.json
           Get-ChildItem artifacts/*-receipt.json -ErrorAction SilentlyContinue | Copy-Item -Destination artifacts/evidence
-      - name: Upload safe installer and evidence outputs
-        if: ${{ always() }}
+      - name: Upload successful delivery receipts
+        if: ${{ success() }}
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          name: receipts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/evidence/*.json
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Preserve safe failure outputs
+        if: ${{ failure() || cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/releases/Setup.exe
             artifacts/releases/RELEASES
             artifacts/releases/*-full.nupkg
             artifacts/evidence/*.json
           if-no-files-found: warn
-          retention-days: 7
-
+          retention-days: 1

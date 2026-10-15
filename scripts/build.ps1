@@ -14,8 +14,9 @@ Set-Location $root
 $m=Get-Content (Join-Path $root 'build/manifest.json') -Raw | ConvertFrom-Json
 $silent=$env:SILENT -eq '1'
 $run=$env:RUN_AFTER_BUILD -eq '1'
+$site=$false
 foreach($option in $Options) {
-  switch($option) { '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
+  switch($option) { '--site' {$site=$true} '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
 }
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 function Invoke-Checked([string]$File,[string[]]$Arguments) {
@@ -47,6 +48,7 @@ try {
   $buildStartedUtc=[DateTime]::UtcNow.ToString('o')
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
+  if($site) {if($Action -ne 'build') {throw '--site is supported only by root build.bat.'};. (Join-Path $PSScriptRoot 'build-site.ps1');exit 0}
   Write-Host 'Using project-local portable tooling; administrator rights are not required.'
   $tools=Assert-Contained (Join-Path $root '.tools') $root; New-Item -ItemType Directory -Force $tools | Out-Null
   $lock=[IO.File]::Open((Join-Path $tools 'bootstrap.lock'),'OpenOrCreate','ReadWrite','None')
@@ -140,6 +142,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 

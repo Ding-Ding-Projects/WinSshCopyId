@@ -33,3 +33,9 @@ The build publishes `src/WinSshCopyId.ToolWorker` as a complete self-contained x
 The pinned official MinGit x64 archive is verified against its published Git for Windows asset digest, fully extracted and inventoried, then bundled under `Tools/MinGit`. Its original `LICENSE.txt` and component licenses remain included. The exact corresponding source URL and archive digest are in `Tools/mingit-manifest.json`, with full member hashes, version, runtime and executable lookup `cmd/git.exe`. It is application-local and does not replace installed Git or change persistent PATH. Workspace history integration must resolve that exact packaged executable and preserve the existing encrypted-history boundary.
 
 `build-info.json` in the published root records the actual source commit, version, build-start UTC timestamp (`builtAtUtc`, ISO 8601), runtime and manifest hash. It is included in the payload hash receipt. The native interface may localize this recorded timestamp, including seconds, but must not replace it with launch time or file modification time.
+
+## Website route
+
+`build.bat --site /s` invokes the documentation-owned `scripts/build-site.mjs` through a verified Node.js 22 or newer. If a compatible installed executable is unavailable, it acquires the exact official portable Node.js version and archive digest from `build/manifest.json`, verifies and inventories the extraction, and invokes that executable directly without global installation or persistent PATH changes. An absent documentation helper is an honest nonzero result. The helper owns website output validation; the root route records successful source-bound invocation in `artifacts/site-build-receipt.json`.
+
+Hosted output retention is one day. Successful publication uploads only receipts because release assets are durable; failed or cancelled runs preserve only explicitly safe installer outputs and receipts when present. Dependency caches and source trees are never uploaded.
