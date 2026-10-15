@@ -118,4 +118,3 @@ if (options.mode === 'stage') {
   }
   console.log(JSON.stringify({ rolledBack: true, target, restoredSha256: record.previousSha256 }, null, 2));
 }
-
