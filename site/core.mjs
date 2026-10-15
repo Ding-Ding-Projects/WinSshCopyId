@@ -49,3 +49,11 @@ export function renderMarkdown(doc,documents){
  flush();if(code!==null)output+=`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`;return output;
 }
 
+export function publicRouteTitle(route,language,labels,documents){
+ if(route.startsWith('article/'))return (documents.find(d=>route==='article/'+d.id)?.title??'Article')+' · WinSshCopyId';
+ const pair=labels[route]??['Documentation','文件'];
+ return (language==='yue'?pair[1]:language==='both'?pair[0]+' / '+pair[1]:pair[0])+' · WinSshCopyId';
+}
+export function bindSkipLink(link,main){
+ link.addEventListener('click',event=>{event.preventDefault();main.focus();main.scrollIntoView({block:'start'});});
+}

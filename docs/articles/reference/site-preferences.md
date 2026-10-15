@@ -24,3 +24,9 @@ Browser-only state is not an operating-system credential vault or cross-applicat
 
 - [Delivery evidence](delivery-evidence.md)
 - [First session](../getting-started/first-session.md)
+
+## Title, focus and regex semantics
+
+Personal wording applies only to private interface labels. The browser document title always uses shipped original localized route labels or the original source article title. The skip link focuses the current reading area without changing its route.
+
+Regex replacement and collection filtering use exactly the requested flags, including global, Unicode and sticky behavior. The match table uses a separate global enumeration cursor; it preserves Unicode and sticky semantics and explicitly labels that enumeration. A non-global replacement changes only the native engine's first match.
