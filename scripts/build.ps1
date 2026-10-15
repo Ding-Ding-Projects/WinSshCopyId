@@ -2,7 +2,8 @@ param([Parameter(Mandatory=$true)][ValidateSet('build','installer','dependencies
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $ProgressPreference='SilentlyContinue'
-Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+$signatureAssembly=[Reflection.Assembly]::Load('Microsoft.PowerShell.Security, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35')
+Import-Module $signatureAssembly.Location -ErrorAction Stop
 function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
   $stream=[IO.File]::OpenRead($LiteralPath)
   $digest=[Security.Cryptography.HashAlgorithm]::Create($Algorithm)
@@ -106,6 +107,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 
