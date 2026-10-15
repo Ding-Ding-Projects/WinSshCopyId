@@ -175,6 +175,15 @@ try
         await Reject(() => provisioner.CreateAsync(selected, provisioned.Directory, true, 25565), "Provisioning replaced an existing instance directory.");
         await Reject(() => provisioner.CreateAsync(selected, Path.Combine(root, "no-consent"), false, 25565), "Provisioning ignored missing EULA consent.");
     }
+    var workerManifestPath = Path.Combine(root, "worker-manifest.json");
+    await File.WriteAllTextAsync(workerManifestPath, System.Text.Json.JsonSerializer.Serialize(new {
+        sourceCommit = new string('a', 40), runtime = "win-x64",
+        members = new[] { new { relativePath = "WinSshCopyId.ToolWorker.exe", bytes = 1, sha256 = new string('b',64) } } }));
+    var admittedWorker = await PackagedWorkerManifest.LoadAsync(workerManifestPath, root, new string('a',40));
+    Check(admittedWorker.AvailableAdapters.IsEmpty, "Manifest admission enabled an adapter without confined execution.");
+    await Reject(() => PackagedWorkerManifest.LoadAsync(workerManifestPath, root, new string('c',40)), "Worker from another source commit was accepted.");
+    await Reject(() => Task.FromResult(new ConfinedLocalConverter(root, ImmutableDictionary<string,string>.Empty
+        .Add("WinSshCopyId.ToolWorker.exe",new string('b',64)).Add("bad:stream",new string('b',64)))), "Worker inventory admitted an alternate stream path.");
     Console.WriteLine($"PASS: {completed} local tool assertions; only bounded test child launched, no real server or service launched.");
 }
 finally { Directory.Delete(root, true); }
