@@ -6,6 +6,8 @@ public static class WorkspaceText
     private static readonly Dictionary<string,string> Cantonese = new()
     {
         ["Settings saved."]="設定已儲存。",
+        ["The profile key reference was not opened. Choose a public key explicitly."]="未有開啟設定檔內的金鑰路徑。請自行選擇公開金鑰。",
+        ["Profile imported. Its key path was not opened. Choose a public key explicitly and enter the password before deployment."]="設定檔已匯入，但未有開啟內附的金鑰路徑。部署前請自行選擇公開金鑰並輸入密碼。",
         ["No saved connections. Add a connection or import a profile."]="未有已儲存連線。請新增連線或匯入設定檔。",
         ["No public keys. Import a public key or generate a new pair."]="未有公開金鑰。請匯入公開金鑰或產生新金鑰組。",
         ["No results yet. Start an installation from Connections."]="未有結果。請先在連線頁面開始安裝。",

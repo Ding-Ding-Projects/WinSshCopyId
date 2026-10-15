@@ -41,7 +41,9 @@ public sealed partial class MainWindow : Window
     private readonly TextBlock keyLabel = new() {TextWrapping=TextWrapping.Wrap}, resultDetail = new() {TextWrapping=TextWrapping.Wrap,IsTextSelectionEnabled=true};
     private readonly ListView connectionList = new() {MaxHeight=420,SelectionMode=ListViewSelectionMode.Single}, keyList = new() {MaxHeight=400}, resultList = new() {MaxHeight=400,SelectionMode=ListViewSelectionMode.Multiple};
     private readonly ProgressBar progress = new() {Minimum=0,Maximum=100};
-    private KeyEntry? selectedKey;
+    private ProfileKeySelection<KeyEntry> keySelection=ProfileKeySelection<KeyEntry>.FromProfile(null);
+    private KeyEntry? selectedKey {get=>keySelection.Selected;set=>keySelection=value is null?keySelection.ClearSelection():keySelection.Choose(value,value.PublicKeyPath);}
+    private string? unresolvedKeyReference {get=>keySelection.Reference;set=>keySelection=ProfileKeySelection<KeyEntry>.FromProfile(value);}
     private Guid? selectedConnection;
     private string route = "Connections";
     private CancellationTokenSource? operation;
@@ -190,23 +192,24 @@ public sealed partial class MainWindow : Window
         try{ApplyConnection(new(){Hosts=item.Hosts,Username=item.Username,Port=item.Port,KeyPath=item.KeyPath});selectedConnection=item.Id;nameBox.Text=item.Name;passwordBox.Password="";}
         catch(Exception ex){Show(SafeError(ex),true);}
     }
-    private void NewConnection(){if(busy)return;selectedConnection=null;nameBox.Text="";hostsBox.Text="";userBox.Text="";portBox.Value=22;passwordBox.Password="";selectedKey=null;rememberPassword.IsChecked=false;UpdateKeyLabel();Navigate("Connections");nameBox.Focus(FocusState.Programmatic);}
+    private void NewConnection(){if(busy)return;selectedConnection=null;nameBox.Text="";hostsBox.Text="";userBox.Text="";portBox.Value=22;passwordBox.Password="";selectedKey=null;unresolvedKeyReference=null;rememberPassword.IsChecked=false;UpdateKeyLabel();Navigate("Connections");nameBox.Focus(FocusState.Programmatic);}
     private async Task SaveRecordAsync()
     {
-        var record=new ConnectionRecord(selectedConnection??Guid.NewGuid(),nameBox.Text.Trim(),hostsBox.Text,userBox.Text.Trim(),Port,selectedKey?.PublicKeyPath);record.Validate();
+        var record=new ConnectionRecord(selectedConnection??Guid.NewGuid(),nameBox.Text.Trim(),hostsBox.Text,userBox.Text.Trim(),Port,selectedKey?.PublicKeyPath??unresolvedKeyReference);record.Validate();
         var proposed=connections.Where(x=>x.Id!=record.Id).Append(record).ToList();await data.SaveRecordsAsync(proposed);
         data.SaveConnection(CollectConnection());
         if(!data.IsEvidence){if(rememberPassword.IsChecked==true&&passwordBox.Password.Length>0)credentials.Set("ssh-password",passwordBox.Password);else credentials.Delete("ssh-password");}
         connections.Clear();connections.AddRange(proposed);selectedConnection=record.Id;RefreshConnections();Show("Connection saved.");
     }
     private int Port=>double.IsNaN(portBox.Value)?22:checked((int)portBox.Value);
-    private AppSettings CollectConnection()=>new(){Hosts=hostsBox.Text,Username=userBox.Text.Trim(),Port=Port,KeyPath=selectedKey?.PublicKeyPath,RememberPassword=rememberPassword.IsChecked==true&&!data.IsEvidence,AutoSave=true,Theme=preferences.Theme.ToString()};
-    private void ApplyConnection(AppSettings settings,KeyEntry? validatedKey=null,bool keyValidated=false)
+    private AppSettings CollectConnection()=>new(){Hosts=hostsBox.Text,Username=userBox.Text.Trim(),Port=Port,KeyPath=selectedKey?.PublicKeyPath??unresolvedKeyReference,RememberPassword=rememberPassword.IsChecked==true&&!data.IsEvidence,AutoSave=true,Theme=preferences.Theme.ToString()};
+    private void ApplyConnection(AppSettings settings)
     {
-        KeyEntry? candidate=validatedKey;
-        if(!keyValidated&&!string.IsNullOrWhiteSpace(settings.KeyPath)&&File.Exists(settings.KeyPath)){candidate=ImportValidated(settings.KeyPath);}
+        // A persisted path is untrusted metadata, not authorization to access a file or network share.
+        // This rule also applies on restart and saved-record selection, not just at initial import.
+        unresolvedKeyReference=settings.KeyPath;
         hostsBox.Text=settings.Hosts;userBox.Text=settings.Username;portBox.Value=settings.Port;rememberPassword.IsChecked=settings.RememberPassword;
-        selectedKey=candidate;UpdateKeyLabel();
+        selectedKey=null;UpdateKeyLabel();
     }
     private KeyEntry ImportValidated(string path)
     {
@@ -214,7 +217,7 @@ public sealed partial class MainWindow : Window
         var key=keyManager.ImportPublicKey(path);SshInput.ValidatePublicKey(key.PublicKeyLine);return key;
     }
     private static string Fingerprint(KeyEntry key)=>"SHA256:"+Convert.ToBase64String(SHA256.HashData(Convert.FromBase64String(key.PublicKeyLine.Split(' ',StringSplitOptions.RemoveEmptyEntries)[1]))).TrimEnd('=');
-    private void UpdateKeyLabel()=>keyLabel.Text=selectedKey is null?L("No public keys"):selectedKey.FileName+"\n"+selectedKey.KeyType+" · "+Fingerprint(selectedKey);
+    private void UpdateKeyLabel()=>keyLabel.Text=selectedKey is null?L(string.IsNullOrWhiteSpace(unresolvedKeyReference)?"No public keys":"The profile key reference was not opened. Choose a public key explicitly."):selectedKey.FileName+"\n"+selectedKey.KeyType+" · "+Fingerprint(selectedKey);
     private async Task PickKeyAsync()
     {
         var picker=OpenPicker(".pub","*");var file=await picker.PickSingleFileAsync();if(file is null)return;
@@ -224,16 +227,14 @@ public sealed partial class MainWindow : Window
     {
         passwordBox.Password="";var file=await OpenPicker(".json").PickSingleFileAsync();if(file is null)return;
         var imported=SettingsStore.Import(file.Path);var merged=SettingsStore.ApplyProfile(CollectConnection(),imported);
-        // Parse every referenced key before replacing visible fields or persisted state.
-        KeyEntry? validated=null;
-        if(!string.IsNullOrWhiteSpace(merged.KeyPath)){if(!File.Exists(merged.KeyPath))throw new InvalidDataException("The profile's public-key file is unavailable. No fields were applied.");validated=ImportValidated(merged.KeyPath);}
-        data.SaveConnection(merged);ApplyConnection(merged,validated,keyValidated:true);rememberPassword.IsChecked=false;Show("Profile imported. Enter the password to deploy.");
+        data.SaveConnection(merged);ApplyConnection(merged);rememberPassword.IsChecked=false;Show(L("Profile imported. Its key path was not opened. Choose a public key explicitly and enter the password before deployment."));
     }
     private async Task ExportProfileAsync(){var file=await SavePicker("connection-profile","JSON profile",".json").PickSaveFileAsync();if(file is not null&&await ConfirmOverwriteAsync(file.Path)){SettingsStore.Export(file.Path,CollectConnection());Show("Profile exported without credentials.");}}
 
-    private async Task DeployAsync(IReadOnlyList<DeploymentRequest>? retry)
+    private async Task DeployAsync(IReadOnlyList<DeploymentRequest>? retry,CancellationTokenSource? retryBatch=null,bool reviewApproved=false)
     {
-        if(busy)return;if(data.IsEvidence){Show(L("Evidence profile: SSH and credential storage disabled"),true);return;}
+        if(busy&&retryBatch is null)return;if(data.IsEvidence){Show(L("Evidence profile: SSH and credential storage disabled"),true);return;}
+        retryBatch?.Token.ThrowIfCancellationRequested();
         if(retry is null&&selectedKey is null)throw new ArgumentException("Choose a public key first.");
         var username=userBox.Text.Trim();if(retry is null)SshInput.ValidateUser(username);
         var targets=retry is null?HostTarget.ParseList(hostsBox.Text,Port):Array.Empty<HostTarget>();if(retry is null&&targets.Count==0)throw new ArgumentException("Enter at least one host.");
@@ -241,11 +242,14 @@ public sealed partial class MainWindow : Window
         foreach(var request in requests)SshInput.ValidateEndpoint(request.Host,request.Port);
         if(passwordBox.Password.Length==0)throw new ArgumentException("Enter the password for this operation.");
         var review=string.Join("\n",requests.Select(r=>$"{r.Username}@{r.Host}:{r.Port}\n{PublicFingerprint(r.PublicKey)}"))+"\n\nThe public key will be appended if missing. Completed changes remain installed if this operation is cancelled.";
-        if(!await ConfirmAsync(L("Review installation"),review,L("Continue")))return;
-        operation=new CancellationTokenSource();SetBusy(true);progress.IsIndeterminate=true;
-        var token=operation.Token;var password=passwordBox.Password;passwordBox.Password="";
+        var ownsLifetime=retryBatch is null;var lifetime=retryBatch??new CancellationTokenSource();
+        if(ownsLifetime)operation=lifetime;SetBusy(true);progress.IsIndeterminate=true;
+        var token=lifetime.Token;var password="";
         try
         {
+            token.ThrowIfCancellationRequested();
+            if(!reviewApproved&&!await ConfirmAsync(L("Review installation"),review,L("Continue"),token))return;
+            token.ThrowIfCancellationRequested();password=passwordBox.Password;passwordBox.Password="";
             var deployer=new SshDeployer(new HostTrustStore(Path.Combine(data.Root,"trusted-hosts.json")),approval=>ApproveHost(approval,token));
             var service=new SequentialDeploymentService(new SshDeploymentTransport(deployer));
             var updates=new Progress<DeploymentProgress>(p=>{progress.IsIndeterminate=false;progress.Value=p.Total==0?0:100d*p.Completed/p.Total;StatusText.Text=$"{p.Stage} · {p.Host} · {p.Completed}/{p.Total}";});
@@ -255,7 +259,7 @@ public sealed partial class MainWindow : Window
             Show($"{completed}/{requests.Count} installation outcomes confirmed. Completed changes remain installed."+(token.IsCancellationRequested?" Cancellation has settled.":""),completed!=requests.Count);
             RefreshResults();Navigate("Results");
         }
-        finally{password="";SetBusy(false);progress.IsIndeterminate=false;operation.Dispose();operation=null;}
+        finally{password="";progress.IsIndeterminate=false;if(ownsLifetime){SetBusy(false);lifetime.Dispose();operation=null;}}
     }
     private bool ApproveHost(HostKeyApproval approval,CancellationToken token)
     {
@@ -286,8 +290,8 @@ public sealed partial class MainWindow : Window
     }
     private void CancelOperation(){if(operation is null)return;operation.Cancel();StatusText.Text="Cancelling. Waiting for the active operation to settle; completed changes remain installed.";if(cancelButton is not null)cancelButton.IsEnabled=false;GlobalCancel.IsEnabled=false;}
     private void SetBusy(bool value){busy=value;GlobalCancel.Visibility=value?Visibility.Visible:Visibility.Collapsed;GlobalCancel.IsEnabled=value;if(installButton is not null)installButton.IsEnabled=!value&&!data.IsEvidence;if(cancelButton is not null)cancelButton.IsEnabled=value;hostsBox.IsEnabled=!value;userBox.IsEnabled=!value;portBox.IsEnabled=!value;passwordBox.IsEnabled=!value;}
-    private async Task<bool> ConfirmAsync(string title,string message,string action)
-    {var dialog=new ContentDialog{XamlRoot=Root.XamlRoot,Title=title,Content=Text(message),PrimaryButtonText=action,CloseButtonText=L("Cancel"),DefaultButton=ContentDialogButton.Close};return await dialog.ShowAsync()==ContentDialogResult.Primary;}
+    private async Task<bool> ConfirmAsync(string title,string message,string action,CancellationToken cancellationToken=default)
+    {cancellationToken.ThrowIfCancellationRequested();var dialog=new ContentDialog{XamlRoot=Root.XamlRoot,Title=title,Content=Text(message),PrimaryButtonText=action,CloseButtonText=L("Cancel"),DefaultButton=ContentDialogButton.Close};using var registration=cancellationToken.Register(()=>DispatcherQueue.TryEnqueue(dialog.Hide));var result=await dialog.ShowAsync();return !cancellationToken.IsCancellationRequested&&result==ContentDialogResult.Primary;}
 
     private void BuildKeys()
     {
@@ -328,10 +332,11 @@ public sealed partial class MainWindow : Window
         if(eligible.Length==0){Show("No selected target can be retried automatically. Completed, changed-identity and uncertain outcomes are excluded; inspect uncertain targets before another installation.",true);return;}
         if(!await ConfirmAsync("Review failed-target retry",string.Join("\n",eligible.Select(o=>$"{o.Request.Host}:{o.Request.Port} · {o.RetryAction}"))+$"\n\n{selected.Length-eligible.Length} selected targets excluded. Verification-only retries never reinstall the key.",L("Continue")))return;
         var verification=eligible.Where(o=>o.RetryAction==DeploymentRetryAction.VerifyOnly).ToArray();
-        if(verification.Length>0)
+        var installs=eligible.Where(o=>o.RetryAction==DeploymentRetryAction.Deploy).Select(o=>o.Request).ToArray();
+        using var batch=new CancellationTokenSource();operation=batch;SetBusy(true);
+        try
         {
-            operation=new CancellationTokenSource();SetBusy(true);var token=operation.Token;
-            try
+            async Task VerifyPhase(CancellationToken token)
             {
                 var deployer=new SshDeployer(new HostTrustStore(Path.Combine(data.Root,"trusted-hosts.json")),a=>ApproveHost(a,token));var updated=outcomes.ToList();
                 foreach(var previous in verification)
@@ -342,12 +347,16 @@ public sealed partial class MainWindow : Window
                     catch(Exception){replacement=previous with{Verified=false,Verification=token.IsCancellationRequested?VerificationState.Cancelled:VerificationState.Failed,CancellationRequested=token.IsCancellationRequested,Error="Verification did not complete. Installed changes remain in place."};}
                     var index=updated.IndexOf(previous);if(index>=0)updated[index]=replacement;
                 }
-                outcomes=updated;RefreshResults();Show("Verification retry settled. Installation state was retained.");
+                outcomes=updated;RefreshResults();
             }
-            finally{SetBusy(false);operation.Dispose();operation=null;}
+            var result=await RetryPhaseCoordinator.RunAsync(VerifyPhase,
+                token=>installs.Length==0?Task.FromResult(false):ConfirmAsync(L("Review installation"),string.Join("\n",installs.Select(r=>$"{r.Username}@{r.Host}:{r.Port}\n{PublicFingerprint(r.PublicKey)}"))+"\n\nOnly these eligible failed targets will be installed. Previously completed changes are retained.",L("Continue"),token),
+                token=>DeployAsync(installs,batch,reviewApproved:true),batch.Token);
+            Show(result==RetryPhaseResult.Cancelled?"Retry cancelled. Completed changes remain installed; no further phase will start.":"Retry settled. Installation state was retained.");
         }
-        var installs=eligible.Where(o=>o.RetryAction==DeploymentRetryAction.Deploy).Select(o=>o.Request).ToArray();if(installs.Length>0)await DeployAsync(installs);
+        finally{SetBusy(false);operation=null;}
     }
+
     private IEnumerable<DeploymentOutcome> SelectedOutcomes()=>!resultList.IsEnabled?[]:resultList.SelectedItems.Count>0?resultList.SelectedItems.OfType<OutcomeRow>().Select(x=>x.Outcome):resultList.Items.OfType<OutcomeRow>().Select(x=>x.Outcome);
     private void CopyResultCommands()
     {
