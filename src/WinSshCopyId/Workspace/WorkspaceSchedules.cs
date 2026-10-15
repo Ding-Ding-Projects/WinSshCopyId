@@ -76,14 +76,23 @@ public interface ISettingsSourceTransport
 {
     Task<byte[]> GetAsync(Uri uri, string? bearerCredential, CancellationToken cancellationToken);
 }
-public sealed class HttpsSettingsTransport : ISettingsSourceTransport
+public sealed record PrivateSettingsTarget(string Authority, IReadOnlyList<string> Addresses);
+public interface ITargetBoundSettingsSourceTransport : ISettingsSourceTransport
 {
-    public async Task<byte[]> GetAsync(Uri uri, string? bearerCredential, CancellationToken cancellationToken)
+    Task<byte[]> GetPrivateAsync(Uri uri, PrivateSettingsTarget approvedTarget, string? bearerCredential, CancellationToken cancellationToken);
+}
+public sealed class HttpsSettingsTransport : ITargetBoundSettingsSourceTransport
+{
+    public Task<byte[]> GetAsync(Uri uri, string? bearerCredential, CancellationToken cancellationToken) => SendAsync(uri, null, bearerCredential, cancellationToken);
+    public Task<byte[]> GetPrivateAsync(Uri uri, PrivateSettingsTarget approvedTarget, string? bearerCredential, CancellationToken cancellationToken) => SendAsync(uri, approvedTarget, bearerCredential, cancellationToken);
+    private async Task<byte[]> SendAsync(Uri uri, PrivateSettingsTarget? approvedTarget, string? bearerCredential, CancellationToken cancellationToken)
     {
-        ExternalSettingsSource.ValidateUri(uri);
+        ExternalSettingsSource.ValidateUri(uri, approvedTarget);
         // Resolve once and pin the validated address to prevent DNS rebinding between checks and connection.
         var addresses = await Dns.GetHostAddressesAsync(uri.DnsSafeHost, cancellationToken);
-        if (addresses.Length == 0 || addresses.Any(a => !ExternalSettingsSource.IsPublicAddress(a))) throw new InvalidDataException("The source address is not public.");
+        var approvedAddresses = approvedTarget?.Addresses.Select(IPAddress.Parse).ToArray();
+        if (addresses.Length == 0 || addresses.Any(a => approvedAddresses is null ? !ExternalSettingsSource.IsPublicAddress(a) : !approvedAddresses.Contains(a)))
+            throw new InvalidDataException("The source address is not approved.");
         using var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false, Credentials = null };
         handler.ConnectCallback = async (context, cancel) =>
         {
@@ -105,27 +114,36 @@ public sealed class HttpsSettingsTransport : ISettingsSourceTransport
         return memory.ToArray();
     }
 }
-public sealed class ExternalSettingsSource(ISettingsSourceTransport transport, Func<string, string?> getCredential)
+public sealed class ExternalSettingsSource(ISettingsSourceTransport transport, Func<string, string?> getCredential, IReadOnlyList<PrivateSettingsTarget>? approvedHomeAssistantTargets = null)
 {
-    public static void ValidateUri(Uri uri)
+    public static void ValidateUri(Uri uri, PrivateSettingsTarget? approvedTarget = null)
     {
-        if (!uri.IsAbsoluteUri || uri.Scheme != "https" || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0 || uri.HostNameType == UriHostNameType.Unknown || uri.IsLoopback)
+        if (!uri.IsAbsoluteUri || uri.Scheme != "https" || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0 || uri.Query.Length != 0 || uri.HostNameType == UriHostNameType.Unknown)
             throw new InvalidDataException("A public HTTPS source without embedded credentials is required.");
-        if (IPAddress.TryParse(uri.Host, out var ip) && !IsPublicAddress(ip)) throw new InvalidDataException("Private network sources are not supported by this transport.");
+        if (approvedTarget is not null)
+        {
+            if (!string.Equals(uri.Authority, approvedTarget.Authority, StringComparison.OrdinalIgnoreCase) || approvedTarget.Addresses.Count is < 1 or > 16 ||
+                approvedTarget.Addresses.Any(value => !IPAddress.TryParse(value, out var address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) || address.IsIPv6Multicast || address.GetAddressBytes()[0] >= 224 && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+                throw new InvalidDataException("The explicit target allowlist is invalid.");
+            return;
+        }
+        if (uri.IsLoopback || IPAddress.TryParse(uri.Host, out var ip) && !IsPublicAddress(ip)) throw new InvalidDataException("Private network sources require an explicit target allowlist.");
     }
     public static bool IsPublicAddress(IPAddress address)
     {
         if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
         if (IPAddress.IsLoopback(address)) return false;
         var b = address.GetAddressBytes();
-        if (b.Length == 16) return !address.IsIPv6LinkLocal && !address.IsIPv6Multicast && !address.Equals(IPAddress.IPv6Any) && (b[0] & 0xfe) != 0xfc;
+        if (b.Length == 16) return (b[0] & 0xe0) == 0x20 && !(b[0] == 0x20 && b[1] == 1 && b[2] == 0x0d && b[3] == 0xb8);
         return b[0] is not (0 or 10 or 127) && b[0] < 224 && !(b[0] == 169 && b[1] == 254) && !(b[0] == 172 && b[1] is >= 16 and <= 31) && !(b[0] == 192 && b[1] == 168) && !(b[0] == 100 && b[1] is >= 64 and <= 127);
     }
     public async Task<SettingsOverride?> FetchAsync(ScheduleSource source, SettingsOverride homeAssistantValues, CancellationToken cancellationToken = default)
     {
         if (source.Kind == ScheduleSourceKind.Local) return homeAssistantValues;
+        if (!Enum.IsDefined(source.Kind)) throw new InvalidDataException("Unsupported source kind.");
         if (!Uri.TryCreate(source.Url, UriKind.Absolute, out var uri)) throw new InvalidDataException("Invalid source URL.");
-        ValidateUri(uri);
+        var approved = source.Kind == ScheduleSourceKind.HomeAssistant ? approvedHomeAssistantTargets?.SingleOrDefault(t => string.Equals(t.Authority, uri.Authority, StringComparison.OrdinalIgnoreCase)) : null;
+        ValidateUri(uri, approved);
         string? credential = null;
         if (source.Kind == ScheduleSourceKind.HomeAssistant)
         {
@@ -135,7 +153,9 @@ public sealed class ExternalSettingsSource(ISettingsSourceTransport transport, F
             uri = new Uri(uri.GetLeftPart(UriPartial.Authority) + "/api/states/" + source.EntityId);
         }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); timeout.CancelAfter(TimeSpan.FromSeconds(10));
-        var bytes = await transport.GetAsync(uri, credential, timeout.Token);
+        var bytes = approved is not null
+            ? await (transport as ITargetBoundSettingsSourceTransport ?? throw new InvalidOperationException("The transport cannot enforce the approved target.")).GetPrivateAsync(uri, approved, credential, timeout.Token)
+            : await transport.GetAsync(uri, credential, timeout.Token);
         if (bytes.Length > 65536) throw new InvalidDataException("The response exceeds its size limit.");
         if (source.Kind == ScheduleSourceKind.HomeAssistant)
         {

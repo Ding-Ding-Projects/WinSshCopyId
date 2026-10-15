@@ -1,5 +1,6 @@
 using System.Text;
 using WinSshCopyId.Workspace;
+using WinSshCopyId.Workspace.Security;
 
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception(name); passed++; }
@@ -44,11 +45,26 @@ var external = new ExternalSettingsSource(new FakeTransport("{\"Version\":1,\"Va
 Check((await external.FetchAsync(new(ScheduleSourceKind.Https,"https://example.com"),new()))!.Theme == WorkspaceTheme.Dark,"external schema");
 var boolean = new ExternalSettingsSource(new FakeTransport("{\"state\":\"off\"}"), _ => "synthetic");
 Check(await boolean.FetchAsync(new(ScheduleSourceKind.HomeAssistant,"https://example.com","input_boolean.mode","reference"),new()) is null,"boolean off");
+var delayed = new DelayedTransport();
+await using(var coordinator=new ScheduleCoordinator(new ExternalSettingsSource(delayed,_=>null),new SystemClock()))
+{
+    var externalRule=doc.Rules[0] with {Source=new(ScheduleSourceKind.Https,"https://example.com")};
+    var oldTask=coordinator.RefreshAsync(defaults,new(1,"UTC",[externalRule]));
+    await delayed.Started.Task;
+    var newest=await coordinator.RefreshAsync(defaults,new(1,"UTC",[doc.Rules[1]]));
+    delayed.Release.SetResult(Encoding.UTF8.GetBytes("{\"Version\":1,\"Values\":{\"Theme\":2}}"));
+    Check(await oldTask is null&&coordinator.Current!.Effective.Theme==WorkspaceTheme.Light,"stale source response suppressed");
+    var restored=await coordinator.RefreshAsync(defaults,new(1,"UTC",[]));
+    Check(restored!.Effective.Theme==defaults.Theme,"base restored when schedule ends");
+}
+ExternalSettingsSource.ValidateUri(new("https://192.168.1.5"),new("192.168.1.5",["192.168.1.5"]));passed++;
+Reject(()=>ExternalSettingsSource.ValidateUri(new("https://192.168.1.6"),new("192.168.1.5",["192.168.1.5"])),"private target exact authority");
 Reject(() => ExternalSettingsSource.ValidateUri(new("http://example.com")), "http rejected");
 Reject(() => ExternalSettingsSource.ValidateUri(new("https://127.0.0.1")), "loopback rejected");
 Reject(() => ExternalSettingsSource.ValidateUri(new("https://user:secret@example.com")), "userinfo rejected");
 var history = new WorkspaceHistory("unused", null, new ProcessExecutor(), new SystemClock());
 Check(!(await history.RecordAsync(Guid.NewGuid(), "created", "profile")).Recorded, "missing git honest");
+Check(Convert.ToHexString(SharedScrypt.Derive("synthetic-pass",Convert.FromHexString("00112233445566778899aabbccddeeff"))).ToLowerInvariant() == "f0b1826e2e45130c0a5f936d684e368098266673770ed903345ced729a21d2ef", "shared protocol scrypt compatibility");
 var temporary = Path.Combine(Path.GetTempPath(), "WinSshCopyId-workspace-check-" + Guid.NewGuid().ToString("N"));
 try
 {
@@ -65,6 +81,39 @@ try
         Check((await realHistory.ReadAsync()).Count == 1,"history browse metadata");
     }
     else throw new Exception("Git is required for this integration check.");
+    var vault = new Dictionary<string,string>();
+    using var protectedHistory = new ProtectedWorkspaceHistory(Path.Combine(temporary,"protected"),git,new ProcessExecutor(),new SystemClock(),key=>vault.GetValueOrDefault(key),(key,value)=>vault[key]=value);
+    protectedHistory.ConfigureCredential("synthetic-pass");
+    try { using var wrong = protectedHistory.Open("wrong"); throw new Exception("wrong history credential"); } catch(UnauthorizedAccessException) { passed++; }
+    using var access = protectedHistory.Open("synthetic-pass");
+    var recordId=Guid.NewGuid();
+    Check((await protectedHistory.RecordAsync(access,recordId,"created","document",Encoding.UTF8.GetBytes("{\"text\":\"first private content\"}"))).Recorded,"encrypted history commit");
+    var revision=(await protectedHistory.BrowseAsync(access)).Single();
+    Check(!Directory.EnumerateFiles(Path.Combine(temporary,"protected"),"*.json").Select(File.ReadAllText).Any(text=>text.Contains("first private content")),"history encrypted at rest");
+    Check(Encoding.UTF8.GetString(await protectedHistory.ReadSnapshotAsync(access,revision.Id)).Contains("first private content"),"history decrypt");
+    Check((await protectedHistory.RecordAsync(access,recordId,"updated","document",Encoding.UTF8.GetBytes("{\"text\":\"second\"}"))).Recorded,"history update");
+    var newer=(await protectedHistory.BrowseAsync(access)).First();
+    Check((await protectedHistory.DiffAsync(access,revision.Id,newer.Id)).Changed,"history diff");
+    var applied=false;
+    Check((await protectedHistory.RestoreAsync(access,revision.Id,(data,cancel)=>{applied=Encoding.UTF8.GetString(data.Span).Contains("first private content");return Task.CompletedTask;})).Recorded&&applied,"append only restore");
+    Check((await protectedHistory.BrowseAsync(access)).Count==3,"restore adds revision");
+    Check(!Encoding.UTF8.GetString(await protectedHistory.ExportRedactedAsync(access)).Contains("first private content"),"redacted export");
+    var modePath=Path.Combine(temporary,"shared","school-mode.v1.json");
+    await using var mode=new SharedSchoolMode(modePath); await mode.StartAsync();
+    Check(mode.Snapshot.Known&&!mode.Snapshot.Restricted,"shared missing record");
+    await mode.ConfigureAsync("Study time","pin","1234"); await mode.SetEnabledAsync(true,null);
+    Check(mode.Snapshot.Restricted&&mode.Snapshot.DisplayName=="Study time","shared enabled chosen name");
+    Check(mode.Snapshot.Project(defaults with {Language=WorkspaceLanguage.Cantonese}).Language==WorkspaceLanguage.English,"shared effective projection");
+    try {await mode.SetEnabledAsync(false,"9999");throw new Exception("wrong shared credential");}catch(UnauthorizedAccessException){passed++;}
+    await mode.SetEnabledAsync(false,"1234");
+    for(var i=0;i<20&&mode.Snapshot.Restricted;i++){await Task.Delay(20);await mode.ReloadAsync();}
+    Check(!mode.Snapshot.Restricted,"shared verified disable");
+    await using var secondMode=new SharedSchoolMode(modePath);await secondMode.StartAsync();
+    var liveRename=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    secondMode.Changed+=(_,snapshot)=>{if(snapshot.Known&&snapshot.DisplayName=="Quiet desk")liveRename.TrySetResult();};
+    await mode.RenameAsync("Quiet desk");await liveRename.Task.WaitAsync(TimeSpan.FromSeconds(3));
+    Check(secondMode.Snapshot.DisplayName=="Quiet desk","shared cross instance rename");
+    Check(!System.Text.Json.JsonSerializer.Serialize(secondMode.Snapshot).Contains("Verifier"),"shared snapshot excludes verifier");
 }
 finally
 {
@@ -75,6 +124,23 @@ finally
     }
 }
 var queue = new BoundedQueue<int>(2); queue.Enqueue(1);queue.Enqueue(2);queue.Enqueue(3);Check(queue.Snapshot().SequenceEqual([2,3]), "queue bound");
+var securityStorage=new MemoryStorage();var securityVault=new Dictionary<string,string>();
+var delegates=new VaultDelegates(key=>securityVault.GetValueOrDefault(key),(key,value)=>securityVault[key]=value,key=>securityVault.Remove(key));
+using(var security=new WorkspaceSecuritySession(securityStorage,delegates,new SystemClock()))
+{
+    Check(await security.LoadAsync(),"security first load");
+    await security.CreateAsync("profile-row",LockPolicy.Pin,["1234"],TimeSpan.FromMinutes(1),1);
+    Check(!await security.AuthenticateAsync("profile-row",["9999"]),"security wrong answer");
+    Check((await security.StatusAsync("profile-row")).WaitingUntil is not null,"security wait recorded");
+}
+using(var restarted=new WorkspaceSecuritySession(securityStorage,delegates,new SystemClock()))
+{
+    Check(await restarted.LoadAsync(),"security persisted reload");
+    var state=await restarted.StatusAsync("profile-row");
+    Check(state.Locked&&state.WaitingUntil is not null&&state.AttemptsRemaining==0,"security restart keeps wait budget and lock");
+}
+securityStorage.Data["security-state.json"][20]^=1;
+using(var corrupted=new WorkspaceSecuritySession(securityStorage,delegates,new SystemClock()))Check(!await corrupted.LoadAsync()&&!corrupted.IsReady,"security corrupt state unavailable");
 Console.WriteLine($"PASS {passed} workspace checks");
 
 sealed class MemoryStorage : IPrivateStorage
@@ -87,4 +153,10 @@ sealed class MemoryStorage : IPrivateStorage
 sealed class FakeTransport(string json) : ISettingsSourceTransport
 {
     public Task<byte[]> GetAsync(Uri uri,string? bearerCredential,CancellationToken cancellationToken) => Task.FromResult(Encoding.UTF8.GetBytes(json));
+}
+sealed class DelayedTransport : ISettingsSourceTransport
+{
+    public TaskCompletionSource Started {get;}=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource<byte[]> Release {get;}=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public async Task<byte[]> GetAsync(Uri uri,string? bearerCredential,CancellationToken cancellationToken){Started.SetResult();return await Release.Task;}
 }

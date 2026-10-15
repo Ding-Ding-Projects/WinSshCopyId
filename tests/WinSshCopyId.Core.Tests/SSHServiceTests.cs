@@ -27,7 +27,10 @@ public sealed class SSHServiceTests
             Assert.False(store.Check("host", 22, "first", null));
             Assert.True(store.Check("host", 22, "first", _ => true));
             Assert.True(new HostTrustStore(Path.Combine(root, "trust.json")).Check("HOST", 22, "first", null));
-            Assert.False(store.Check("host", 22, "changed", _ => throw new Exception("Changed keys must not prompt.")));
+            var changed = Assert.Throws<HostKeyChangedException>(() => store.Check("host", 22, "changed", _ => throw new Exception("Changed keys must not prompt."), "ssh-ed25519"));
+            Assert.Equal("first", changed.ExpectedFingerprint);
+            Assert.Equal("changed", changed.ObservedFingerprint);
+            Assert.Equal("ssh-ed25519", changed.Algorithm);
             Assert.False(store.Check("host", 2222, "first", null));
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
@@ -57,8 +60,11 @@ public sealed class SSHServiceTests
         var fake = new FakeTransport { Cancel = cts };
         var result = await new SequentialDeploymentService(fake).DeployAsync(new[] { Request("one"), Request("two") },
             _ => Task.FromResult<string?>("fixture"), cancellationToken: cts.Token);
-        Assert.Single(result);
-        Assert.Equal(DeploymentState.Cancelled, result[0].State);
+        Assert.Equal(2, result.Count);
+        Assert.Equal(InstallationState.Installed, result[0].Installation);
+        Assert.True(result[0].CancellationRequested);
+        Assert.Equal("fp", result[0].Fingerprint);
+        Assert.Equal(DeploymentState.NotStarted, result[1].State);
         Assert.Single(fake.Calls);
     }
 
