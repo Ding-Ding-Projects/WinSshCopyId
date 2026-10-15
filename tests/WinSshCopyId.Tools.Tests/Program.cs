@@ -164,6 +164,17 @@ try
         await Reject(() => installer.InstallAsync(payloadManifest, (_, _, _) => Task.FromResult(false), cachedArchivePath: fixtureArchive), "Installer accepted failed publisher verification.");
         Check(await File.ReadAllTextAsync(Path.Combine(root, "fixture-installer", "active-installation.json")) == active, "Rejected installer changed the prior active record.");
     }
+    var serverFixtureBytes = Encoding.UTF8.GetBytes("Exact distribution fixture bytes; not a real server");
+    using (var provisioningHttp = new HttpClient(new FakeBinaryHandler(serverFixtureBytes)))
+    using (var provisioner = new JavaServerProvisioner(provisioningHttp))
+    {
+        var selected = new ResolvedJavaDistribution("fixture", new("https://piston-data.mojang.com/fixture.jar"),
+            Convert.ToHexString(SHA1.HashData(serverFixtureBytes)), serverFixtureBytes.Length, 21, ServerCatalogue.JavaManifest);
+        var provisioned = await provisioner.CreateAsync(selected, Path.Combine(root, "provisioned-fixture"), true, 25565);
+        Check(await File.ReadAllTextAsync(provisioned.ServerJar) == Encoding.UTF8.GetString(serverFixtureBytes), "Provisioning did not preserve exact selected distribution bytes.");
+        await Reject(() => provisioner.CreateAsync(selected, provisioned.Directory, true, 25565), "Provisioning replaced an existing instance directory.");
+        await Reject(() => provisioner.CreateAsync(selected, Path.Combine(root, "no-consent"), false, 25565), "Provisioning ignored missing EULA consent.");
+    }
     Console.WriteLine($"PASS: {completed} local tool assertions; only bounded test child launched, no real server or service launched.");
 }
 finally { Directory.Delete(root, true); }
@@ -172,6 +183,11 @@ sealed class FakeHandler(string body) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body), RequestMessage = request });
+}
+sealed class FakeBinaryHandler(byte[] body) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body), RequestMessage = request });
 }
 sealed class FakeDocker(Guid instanceId, string image) : IServerCommandExecutor
 {
