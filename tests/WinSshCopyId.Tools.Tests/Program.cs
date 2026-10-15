@@ -39,12 +39,15 @@ async Task Reject(Func<Task> action, string detail)
 }
 static int FindDualProtocolPort()
 {
-    for (var attempt = 0; attempt < 32; attempt++)
+    for (var attempt = 0; attempt < 64; attempt++)
     {
-        using var udp = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        var candidate = ((IPEndPoint)udp.Client.LocalEndPoint!).Port;
+        var candidate = 12000 + attempt * 431;
         var tcp = new System.Net.Sockets.TcpListener(IPAddress.Loopback, candidate);
-        try { tcp.Start(); return candidate; }
+        try
+        {
+            using var udp = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, candidate));
+            tcp.Start(); return candidate;
+        }
         catch (System.Net.Sockets.SocketException) { }
         finally { tcp.Stop(); }
     }
