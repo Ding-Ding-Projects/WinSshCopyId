@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>WinSshCopyId.ToolWorker</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../WinSshCopyId/Tools/Conversion/LocalConverter.cs" Link="Conversion/LocalConverter.cs" />
+    <Compile Include="../WinSshCopyId/Tools/Conversion/ConversionCatalog.cs" Link="Conversion/ConversionCatalog.cs" />
+  </ItemGroup>
+</Project>
