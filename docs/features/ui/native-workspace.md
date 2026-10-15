@@ -26,6 +26,10 @@ Squirrel maintenance arguments `--squirrel-install`, `--squirrel-updated`, `--sq
 
 ## Remaining acceptance work
 
+The first native verification found a settings-save page-loss defect and bilingual title-bar clipping. The repair keeps the existing page/control instances alive and updates their localized presentation in place after a successful settings write. Event subscriptions are installed once. Adaptive layout avoids missing-page lookup during construction. Minimum sizing uses native minimum-track handling instead of recursive resize calls, and initial window dimensions use the current window DPI. The title row measures its bilingual content in logical units. These changes require the identical native sequence and viewport rerun before either finding is considered verified fixed.
+
+Collection filtering now snapshots display data on the UI thread, debounces updates, evaluates in the background under per-expression and total-work limits, and discards superseded results. Empty and no-match states are explicit. Profile import applies the already-validated public-key object after persistence rather than rereading the file. Export replacement requires two independent confirmations and a full-range slider; public-key and results output is staged before atomic promotion.
+
 The first source unit is not complete product delivery. Persistent full revision browsing, complete tab management, full per-element appearance and locks, advanced accessibility/narration/schedules, complete command-palette teleport, full localization, universal search filtering, and native converter/model/server management remain unfinished. Runtime UI interaction, accessibility, genuine screenshots, high-DPI layout, native title-bar behavior, installation and update evidence have not been established by source inspection.
 
 The original vector mark is in `design/assets/product-mark.svg`. PNG and ICO derivatives retain its geometry. ICO frames are 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixels. Packaging must include them and verify the icon in the installed application; frame inventory alone does not prove that result.

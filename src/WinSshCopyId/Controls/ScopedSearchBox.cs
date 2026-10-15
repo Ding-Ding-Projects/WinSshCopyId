@@ -19,6 +19,11 @@ public sealed class ScopedSearchBox : StackPanel
     private Action? synchronizeWorkbench;
     public SearchQuery Query => query;
     public event EventHandler? QueryChanged;
+    public void SetPlaceholder(string placeholder)
+    {
+        field.PlaceholderText=placeholder;
+        AutomationProperties.SetName(field,placeholder);
+    }
 
     public ScopedSearchBox(string scopeId, string placeholder)
     {

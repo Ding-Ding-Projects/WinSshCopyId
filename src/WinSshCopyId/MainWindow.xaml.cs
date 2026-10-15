@@ -45,7 +45,13 @@ public sealed partial class MainWindow : Window
     private Guid? selectedConnection;
     private string route = "Connections";
     private CancellationTokenSource? operation;
-    private bool initialized, closed, busy;
+    private bool initialized, closed, busy, buildingPages;
+    private readonly WindowSizing windowSizing;
+    private readonly Dictionary<FrameworkElement,string> localized = new();
+    private readonly Dictionary<FrameworkElement,string> localizedHeaders = new();
+    private readonly Dictionary<string,string> searchLabels = new();
+    private readonly Dictionary<string,CancellationTokenSource> filterRequests = new();
+    private readonly TextBlock connectionsEmpty=new(){TextWrapping=TextWrapping.Wrap}, keysEmpty=new(){TextWrapping=TextWrapping.Wrap}, resultsEmpty=new(){TextWrapping=TextWrapping.Wrap}, historyEmpty=new(){TextWrapping=TextWrapping.Wrap};
     private Button? installButton, cancelButton;
     private Grid? connectionGrid;
     private Border? recordsSurface;
@@ -55,24 +61,29 @@ public sealed partial class MainWindow : Window
     {
         data=provider; InitializeComponent();
         ExtendsContentIntoTitleBar=true; SetTitleBar(DragRegion);
-        AppWindow.Resize(new SizeInt32(1200,800));
+        windowSizing=new WindowSizing(WinRT.Interop.WindowNative.GetWindowHandle(this));
+        AppWindow.Resize(new SizeInt32((int)Math.Round(1200*windowSizing.Scale),(int)Math.Round(800*windowSizing.Scale)));
         var icon=Path.Combine(AppContext.BaseDirectory,"Assets","WinSshCopyId.ico");if(File.Exists(icon))AppWindow.SetIcon(icon);
         if(AppWindow.Presenter is OverlappedPresenter presenter){presenter.IsResizable=true;presenter.IsMaximizable=true;presenter.IsMinimizable=true;}
         Root.SizeChanged += (_,_) => Adapt();
-        AppWindow.Changed += (_,e) => {if(e.DidSizeChange){var scale=Root.XamlRoot?.RasterizationScale??1;var size=AppWindow.Size;if(size.Width<640*scale||size.Height<480*scale)AppWindow.Resize(new SizeInt32(Math.Max(size.Width,(int)(640*scale)),Math.Max(size.Height,(int)(480*scale))));}};
+
         var shortcut=new KeyboardAccelerator {Key=VirtualKey.F,Modifiers=VirtualKeyModifiers.Control|VirtualKeyModifiers.Shift};
         shortcut.Invoked+=(_,e)=>{e.Handled=true;OpenPalette(PaletteButton);}; Root.KeyboardAccelerators.Add(shortcut);
-        Closed+=(_,_)=>{closed=true;operation?.Cancel();passwordBox.Password="";};
+        Closed+=(_,_)=>{closed=true;operation?.Cancel();foreach(var request in filterRequests.Values)request.Cancel();passwordBox.Password="";windowSizing.Dispose();};
+        connectionList.SelectionChanged+=ConnectionSelected;
+        keyList.SelectionChanged+=KeySelected;
+        resultList.SelectionChanged+=ResultSelected;
         Root.Loaded+=async(_,_)=>{if(!initialized)await InitializeAsync();};
     }
     private string L(string value)=>WorkspaceText.Get(value,preferences.Language);
     private Style StyleFor(string key)=>(Style)Application.Current.Resources[key];
-    private TextBlock Text(string value,bool heading=false)=>new(){Text=L(value),TextWrapping=TextWrapping.Wrap,Style=StyleFor(heading?"MaterialTitleStyle":"MaterialBodyStyle")};
+    private TextBlock Text(string value,bool heading=false)
+    {var text=new TextBlock{Text=L(value),TextWrapping=TextWrapping.Wrap,Style=StyleFor(heading?"MaterialTitleStyle":"MaterialBodyStyle")};localized[text]=value;return text;}
     private Button Action(string label,Action action,bool primary=false)
     {
         var button=new Button {Content=L(label),Style=StyleFor(primary?"MaterialPrimaryButtonStyle":"MaterialButtonStyle")};
         AutomationProperties.SetAutomationId(button,route+"."+label.Replace(" ",""));
-        button.Click+=(_,_)=>action();return button;
+        localized[button]=label;button.Click+=(_,_)=>{try{action();}catch(Exception ex){Show(SafeError(ex),true);}};return button;
     }
     private Button AsyncAction(string label,Func<Task> action,bool primary=false)=>Action(label,async()=>{try{if(busy){Show("Wait for the active operation or cancel it before starting another action.");return;}await action();}catch(OperationCanceledException){Show("Operation cancelled.");}catch(Exception ex){Show(SafeError(ex),true);}},primary);
     private static string SafeError(Exception ex)=>ex switch {ArgumentException=>ex.Message,InvalidDataException=>ex.Message,UnauthorizedAccessException=>"Access was denied. Check the selected destination and permissions.",IOException=>"The file operation could not complete. The previous state has been retained.",_=>"The operation could not complete. Review its inputs and try again."};
@@ -80,7 +91,7 @@ public sealed partial class MainWindow : Window
     private Border Card(UIElement content)=>new(){Child=content,Style=StyleFor("MaterialSurfaceStyle")};
     private ScopedSearchBox Search(string id,string label,EventHandler? changed=null)
     {
-        var box=new ScopedSearchBox(id,L(label));if(changed is not null)box.QueryChanged+=changed;searches[id]=box;return box;
+        var box=new ScopedSearchBox(id,L(label));if(changed is not null)box.QueryChanged+=changed;searches[id]=box;searchLabels[id]=label;return box;
     }
     private async Task InitializeAsync()
     {
@@ -97,7 +108,7 @@ public sealed partial class MainWindow : Window
             ApplyPreferences();BuildPages();Navigate(session.Tabs.FirstOrDefault(t=>t.Id==session.ActiveTabId)?.Route??"Connections");
             Show(data.IsEvidence?L("Evidence profile: SSH and credential storage disabled"):WorkspaceText.Ready(preferences));
         }
-        catch(Exception ex){DetachFields();ApplyPreferences();BuildPages();Navigate("Connections");Show(SafeError(ex),true);}
+        catch(Exception ex){ApplyPreferences();if(pages.Count==0)BuildPages();if(pages.ContainsKey("Connections"))Navigate("Connections");Show(SafeError(ex),true);}
     }
     private static bool ValidKey(string value){try{SshInput.ValidatePublicKey(value);return true;}catch(ArgumentException){return false;}}
     private void ApplyPreferences()
@@ -105,20 +116,32 @@ public sealed partial class MainWindow : Window
         Root.RequestedTheme=preferences.Theme switch {WorkspaceTheme.Light=>ElementTheme.Light,WorkspaceTheme.Dark=>ElementTheme.Dark,_=>ElementTheme.Default};
         Root.Resources["ContentControlThemeFontFamily"]=new FontFamily(preferences.FontFamily);
         ProductTitle.Text=preferences.DisplayName;Title=preferences.DisplayName;
+        TitleBar.MinHeight=preferences.Language==WorkspaceLanguage.Bilingual?68:48;
         MainArea.Padding=new Thickness(preferences.Density switch{WorkspaceDensity.Compact=>12,WorkspaceDensity.Spacious=>32,_=>24});
         PaletteButton.Content=L("Commands");AccessibilityButton.Content=L("Accessibility");CompactTabs.Content=L("Workspace tabs");
         AccessibilityButton.Visibility=preferences.AccessibilityButtonVisible?Visibility.Visible:Visibility.Collapsed;
-        BuildText.Text=$"v{typeof(App).Assembly.GetName().Version?.ToString(3)}"+(data.IsEvidence?" · Evidence profile":"");
+        var provenance=BuildProvenance.Read(AppContext.BaseDirectory,typeof(App).Assembly.GetName().Version?.ToString(3)??"unavailable");
+        BuildText.Text=provenance.Display+(data.IsEvidence?" · Evidence profile":"");
+        ToolTipService.SetToolTip(BuildText,"Source: "+(provenance.SourceCommit??"Unavailable")+"\nRuntime: "+(provenance.Runtime??"Unavailable"));
     }
     private void BuildPages()
     {
-        PageHost.Children.Clear();pages.Clear();searches.Clear();NavigationPanel.Children.Clear();
+        if(pages.Count>0)return;
+        buildingPages=true;
+        try
+        {
         var navSearch=Search("tabs.current","Workspace tabs",(_,_)=>FilterNavigation());NavigationPanel.Children.Add(navSearch);
         foreach(var name in destinations){var b=Action(name,()=>Navigate(name));b.HorizontalAlignment=HorizontalAlignment.Stretch;b.Tag=name;NavigationPanel.Children.Add(b);}
         BuildConnections();BuildKeys();BuildResults();BuildSettings();BuildTools();BuildHistory();BuildHelp();
-        Adapt();
+        }
+        finally{buildingPages=false;}
+        RefreshLocalization();Adapt();
     }
-    private void FilterNavigation(){foreach(var child in NavigationPanel.Children.OfType<Button>())child.Visibility=searchEngine.Filter(new[]{(string)child.Tag},x=>L(x),searches["tabs.current"].Query).Any()?Visibility.Visible:Visibility.Collapsed;}
+    private void FilterNavigation()
+    {
+        if(!searches.TryGetValue("tabs.current",out var field))return;
+        _=FilterRecordsAsync("tabs.current",destinations,x=>L(x),field.Query,(matches,error)=>{foreach(var child in NavigationPanel.Children.OfType<Button>())child.Visibility=matches.Contains((string)child.Tag)?Visibility.Visible:Visibility.Collapsed;if(error is not null)Show(error,true);});
+    }
     private void Navigate(string destination)
     {
         if(!pages.ContainsKey(destination))destination="Connections";route=destination;PageTitle.Text=L(destination);PageHost.Children.Clear();PageHost.Children.Add(pages[destination]);
@@ -130,8 +153,8 @@ public sealed partial class MainWindow : Window
     private void BuildConnections()
     {
         nameBox.Header=L("Display name");hostsBox.Header=L("Hosts");hostsBox.PlaceholderText="example.test\n192.0.2.10:22";userBox.Header=L("Username");portBox.Header=L("Port");passwordBox.Header=L("Password");rememberPassword.Content=L("Remember password in Credential Manager");rememberPassword.IsEnabled=!data.IsEvidence;
-        var records=Row(Search("connections.records","Search connections",(_,_)=>RefreshConnections()),connectionList,Action("New connection",NewConnection),AsyncAction("Save connection",SaveRecordAsync));
-        connectionList.SelectionChanged-=ConnectionSelected;connectionList.SelectionChanged+=ConnectionSelected;
+        var records=Row(Search("connections.records","Search connections",(_,_)=>RefreshConnections()),connectionList,connectionsEmpty,Action("New connection",NewConnection),AsyncAction("Save connection",SaveRecordAsync));
+
         recordsSurface=Card(records);connectionGrid=new Grid {ColumnSpacing=20,RowSpacing=16};connectionGrid.ColumnDefinitions.Add(new(){Width=new GridLength(280)});connectionGrid.ColumnDefinitions.Add(new(){Width=new GridLength(1,GridUnitType.Star)});
         connectionGrid.Children.Add(recordsSurface);
         var fields=Row(Search("connections.options","Search options"),nameBox,hostsBox,userBox,portBox,keyLabel,AsyncAction("Choose public key",PickKeyAsync),passwordBox,rememberPassword);
@@ -142,23 +165,30 @@ public sealed partial class MainWindow : Window
     }
     private void Adapt()
     {
+        if(buildingPages||closed)return;
         var compact=Root.ActualWidth<1000;NavigationColumn.Width=new GridLength(compact?0:224);NavigationSurface.Visibility=compact?Visibility.Collapsed:Visibility.Visible;CompactTabs.Visibility=compact?Visibility.Visible:Visibility.Collapsed;
         ProductTitle.Visibility=Root.ActualWidth<820?Visibility.Collapsed:Visibility.Visible;
         if(connectionGrid is not null&&recordsSurface is not null)
         {
             var small=Root.ActualWidth<1000;connectionGrid.ColumnDefinitions[0].Width=new GridLength(small?0:280);recordsSurface.Visibility=small?Visibility.Collapsed:Visibility.Visible;
-            if(small&&!pages["Connections"].Children.OfType<Button>().Any())pages["Connections"].Children.Insert(0,Action("Search connections",()=>OpenConnectionsDrawer(CompactTabs)));
+            if(small&&pages.TryGetValue("Connections",out var connectionPage)&&!connectionPage.Children.OfType<Button>().Any())connectionPage.Children.Insert(0,Action("Search connections",()=>OpenConnectionsDrawer(CompactTabs)));
         }
     }
     private void RefreshConnections()
     {
         if(!searches.TryGetValue("connections.records",out var query))return;
-        connectionList.ItemsSource=searchEngine.Filter(connections,c=>c.ToString(),query.Query).ToArray();
+        connectionList.IsEnabled=false;
+        _=FilterRecordsAsync("connections.records",connections.ToArray(),c=>c.ToString(),query.Query,(matches,error)=>{connectionList.ItemsSource=matches;connectionList.IsEnabled=true;EmptyCaption(connectionsEmpty,matches.Length,error,connections.Count==0?"No saved connections. Add a connection or import a profile.":"No matching records");});
     }
     private void ConnectionSelected(object sender,SelectionChangedEventArgs e)
     {
         if(connectionList.SelectedItem is not ConnectionRecord item)return;
-        selectedConnection=item.Id;nameBox.Text=item.Name;ApplyConnection(new(){Hosts=item.Hosts,Username=item.Username,Port=item.Port,KeyPath=item.KeyPath});passwordBox.Password="";
+        SelectConnection(item);
+    }
+    private void SelectConnection(ConnectionRecord item)
+    {
+        try{ApplyConnection(new(){Hosts=item.Hosts,Username=item.Username,Port=item.Port,KeyPath=item.KeyPath});selectedConnection=item.Id;nameBox.Text=item.Name;passwordBox.Password="";}
+        catch(Exception ex){Show(SafeError(ex),true);}
     }
     private void NewConnection(){if(busy)return;selectedConnection=null;nameBox.Text="";hostsBox.Text="";userBox.Text="";portBox.Value=22;passwordBox.Password="";selectedKey=null;rememberPassword.IsChecked=false;UpdateKeyLabel();Navigate("Connections");nameBox.Focus(FocusState.Programmatic);}
     private async Task SaveRecordAsync()
@@ -171,10 +201,10 @@ public sealed partial class MainWindow : Window
     }
     private int Port=>double.IsNaN(portBox.Value)?22:checked((int)portBox.Value);
     private AppSettings CollectConnection()=>new(){Hosts=hostsBox.Text,Username=userBox.Text.Trim(),Port=Port,KeyPath=selectedKey?.PublicKeyPath,RememberPassword=rememberPassword.IsChecked==true&&!data.IsEvidence,AutoSave=true,Theme=preferences.Theme.ToString()};
-    private void ApplyConnection(AppSettings settings)
+    private void ApplyConnection(AppSettings settings,KeyEntry? validatedKey=null,bool keyValidated=false)
     {
-        KeyEntry? candidate=null;
-        if(!string.IsNullOrWhiteSpace(settings.KeyPath)&&File.Exists(settings.KeyPath)){candidate=ImportValidated(settings.KeyPath);}
+        KeyEntry? candidate=validatedKey;
+        if(!keyValidated&&!string.IsNullOrWhiteSpace(settings.KeyPath)&&File.Exists(settings.KeyPath)){candidate=ImportValidated(settings.KeyPath);}
         hostsBox.Text=settings.Hosts;userBox.Text=settings.Username;portBox.Value=settings.Port;rememberPassword.IsChecked=settings.RememberPassword;
         selectedKey=candidate;UpdateKeyLabel();
     }
@@ -195,10 +225,11 @@ public sealed partial class MainWindow : Window
         passwordBox.Password="";var file=await OpenPicker(".json").PickSingleFileAsync();if(file is null)return;
         var imported=SettingsStore.Import(file.Path);var merged=SettingsStore.ApplyProfile(CollectConnection(),imported);
         // Parse every referenced key before replacing visible fields or persisted state.
-        if(!string.IsNullOrWhiteSpace(merged.KeyPath)){if(!File.Exists(merged.KeyPath))throw new InvalidDataException("The profile's public-key file is unavailable. No fields were applied.");_ = ImportValidated(merged.KeyPath);}
-        data.SaveConnection(merged);ApplyConnection(merged);rememberPassword.IsChecked=false;Show("Profile imported. Enter the password to deploy.");
+        KeyEntry? validated=null;
+        if(!string.IsNullOrWhiteSpace(merged.KeyPath)){if(!File.Exists(merged.KeyPath))throw new InvalidDataException("The profile's public-key file is unavailable. No fields were applied.");validated=ImportValidated(merged.KeyPath);}
+        data.SaveConnection(merged);ApplyConnection(merged,validated,keyValidated:true);rememberPassword.IsChecked=false;Show("Profile imported. Enter the password to deploy.");
     }
-    private async Task ExportProfileAsync(){var file=await SavePicker("connection-profile","JSON profile",".json").PickSaveFileAsync();if(file is not null){SettingsStore.Export(file.Path,CollectConnection());Show("Profile exported without credentials.");}}
+    private async Task ExportProfileAsync(){var file=await SavePicker("connection-profile","JSON profile",".json").PickSaveFileAsync();if(file is not null&&await ConfirmOverwriteAsync(file.Path)){SettingsStore.Export(file.Path,CollectConnection());Show("Profile exported without credentials.");}}
 
     private async Task DeployAsync(IReadOnlyList<DeploymentRequest>? retry)
     {
@@ -260,10 +291,10 @@ public sealed partial class MainWindow : Window
 
     private void BuildKeys()
     {
-        keyList.SelectionChanged+=(_,_)=>{if(keyList.SelectedItem is KeyEntry key){selectedKey=key;UpdateKeyLabel();}};
-        pages["Keys"]=Row(Card(Row(Search("keys.list","Search keys",(_,_)=>RefreshKeys()),keyList,AsyncAction("Import public key",PickKeyAsync),AsyncAction("Generate key",GenerateKeyAsync,true),AsyncAction("Export public key",ExportKeyAsync),Action("Refresh",()=>{if(!data.IsEvidence){keys.Clear();keys.AddRange(keyManager.FindExistingKeys().Where(k=>ValidKey(k.PublicKeyLine)));RefreshKeys();}}))));RefreshKeys();
+
+        pages["Keys"]=Row(Card(Row(Search("keys.list","Search keys",(_,_)=>RefreshKeys()),keyList,keysEmpty,AsyncAction("Import public key",PickKeyAsync),AsyncAction("Generate key",GenerateKeyAsync,true),AsyncAction("Export public key",ExportKeyAsync),Action("Refresh",()=>{if(!data.IsEvidence){keys.Clear();keys.AddRange(keyManager.FindExistingKeys().Where(k=>ValidKey(k.PublicKeyLine)));RefreshKeys();}}))));RefreshKeys();
     }
-    private void RefreshKeys(){if(searches.TryGetValue("keys.list",out var query))keyList.ItemsSource=searchEngine.Filter(keys,k=>k.Display,query.Query).ToArray();}
+    private void RefreshKeys(){if(searches.TryGetValue("keys.list",out var query)){keyList.IsEnabled=false;_=FilterRecordsAsync("keys.list",keys.ToArray(),k=>k.Display,query.Query,(matches,error)=>{keyList.ItemsSource=matches;keyList.IsEnabled=true;EmptyCaption(keysEmpty,matches.Length,error,keys.Count==0?"No public keys. Import a public key or generate a new pair.":"No matching records");});}}
     private async Task GenerateKeyAsync()
     {
         if(busy)return;if(data.IsEvidence){Show("Key generation is disabled in the evidence profile.",true);return;}
@@ -280,16 +311,16 @@ public sealed partial class MainWindow : Window
         try{var key=await Task.Run(()=>keyManager.GenerateKey(output,algorithm,annotation,_=>{},operation.Token));SshInput.ValidatePublicKey(key.PublicKeyLine);keys.Add(key);selectedKey=key;RefreshKeys();UpdateKeyLabel();Show("Key generated and private-file permissions verified. Private-key contents were not displayed or exported.");}
         finally{SetBusy(false);progress.IsIndeterminate=false;operation.Dispose();operation=null;}
     }
-    private async Task ExportKeyAsync(){if(selectedKey is null)throw new ArgumentException("Choose a public key first.");var file=await SavePicker(selectedKey.FileName,"OpenSSH public key",".pub").PickSaveFileAsync();if(file is not null){await File.WriteAllTextAsync(file.Path,selectedKey.PublicKeyLine+Environment.NewLine,new UTF8Encoding(false));Show("Public key exported.");}}
+    private async Task ExportKeyAsync(){if(selectedKey is null)throw new ArgumentException("Choose a public key first.");var payload=selectedKey.PublicKeyLine+Environment.NewLine;var file=await SavePicker(selectedKey.FileName,"OpenSSH public key",".pub").PickSaveFileAsync();if(file is not null&&await ConfirmOverwriteAsync(file.Path)){await WriteExportAsync(file.Path,payload);Show("Public key exported.");}}
     private void BuildResults()
     {
-        resultList.SelectionChanged+=(_,_)=>{if(resultList.SelectedItem is OutcomeRow item)resultDetail.Text=OutcomeText(item.Outcome);};
-        pages["Results"]=Row(Card(Row(Search("results.list","Search results",(_,_)=>RefreshResults()),resultList,resultDetail,AsyncAction("Retry failed targets",RetryFailedAsync),Action("Copy command",CopyResultCommands),AsyncAction("Export results",ExportResultsAsync))));
+
+        pages["Results"]=Row(Card(Row(Search("results.list","Search results",(_,_)=>RefreshResults()),resultList,resultsEmpty,resultDetail,AsyncAction("Retry failed targets",RetryFailedAsync),Action("Copy command",CopyResultCommands),AsyncAction("Export results",ExportResultsAsync))));
     }
     private sealed record OutcomeRow(DeploymentOutcome Outcome){public override string ToString()=>$"{Outcome.Request.Username}@{Outcome.Request.Host}:{Outcome.Request.Port}\n{Outcome.State} · {(Outcome.Verified?"Key login verified":"Key login not verified")}";}
     private static string PublicFingerprint(string publicKey)=>"SHA256:"+Convert.ToBase64String(SHA256.HashData(Convert.FromBase64String(publicKey.Split(' ',StringSplitOptions.RemoveEmptyEntries)[1]))).TrimEnd('=');
     private string OutcomeText(DeploymentOutcome o)=>$"{o.Request.Username}@{o.Request.Host}:{o.Request.Port}\nOutcome: {o.State}\nInstallation: {o.Installation}\nVerification: {o.Verification}\nCancellation requested: {o.CancellationRequested}\nNext safe action: {o.RetryAction}\nPublic key: {PublicFingerprint(o.Request.PublicKey)}\nHost fingerprint: {o.Fingerprint??"Unavailable"}\n{o.Error??""}\nCompleted remote changes are not rolled back by cancellation."+(o.HostKeyChange is {} changed?$"\nHOST IDENTITY CHANGED: STOPPED\nAlgorithm: {changed.Algorithm}\nPrevious SHA256:{changed.ExpectedFingerprint}\nObserved SHA256:{changed.ObservedFingerprint}\nInvestigate this change independently. Automatic replacement and retry are not available.":"");
-    private void RefreshResults(){if(searches.TryGetValue("results.list",out var query)){var rows=outcomes.Select(o=>new OutcomeRow(o));resultList.ItemsSource=searchEngine.Filter(rows,r=>OutcomeText(r.Outcome),query.Query).ToArray();if(outcomes.Count==0)resultDetail.Text=L("No results yet");}}
+    private void RefreshResults(){if(searches.TryGetValue("results.list",out var query)){resultList.IsEnabled=false;var rows=outcomes.Select(o=>new OutcomeRow(o)).ToArray();_=FilterRecordsAsync("results.list",rows,r=>OutcomeText(r.Outcome),query.Query,(matches,error)=>{resultList.ItemsSource=matches;resultList.IsEnabled=true;EmptyCaption(resultsEmpty,matches.Length,error,outcomes.Count==0?"No results yet. Start an installation from Connections.":"No matching records");});if(outcomes.Count==0)resultDetail.Text="";}}
     private async Task RetryFailedAsync()
     {
         if(data.IsEvidence){Show(L("Evidence profile: SSH and credential storage disabled"),true);return;}
@@ -317,41 +348,99 @@ public sealed partial class MainWindow : Window
         }
         var installs=eligible.Where(o=>o.RetryAction==DeploymentRetryAction.Deploy).Select(o=>o.Request).ToArray();if(installs.Length>0)await DeployAsync(installs);
     }
-    private IEnumerable<DeploymentOutcome> SelectedOutcomes()=>resultList.SelectedItems.Count>0?resultList.SelectedItems.OfType<OutcomeRow>().Select(x=>x.Outcome):resultList.Items.OfType<OutcomeRow>().Select(x=>x.Outcome);
+    private IEnumerable<DeploymentOutcome> SelectedOutcomes()=>!resultList.IsEnabled?[]:resultList.SelectedItems.Count>0?resultList.SelectedItems.OfType<OutcomeRow>().Select(x=>x.Outcome):resultList.Items.OfType<OutcomeRow>().Select(x=>x.Outcome);
     private void CopyResultCommands()
     {
         var selected=SelectedOutcomes().ToArray();if(selected.Length==0){Show(L("No results yet"));return;}
         var commands=selected.Where(o=>!string.IsNullOrWhiteSpace(o.Request.PrivateKeyPath)).Select(o=>SshInput.BuildConnectCommand(o.Request.Host,o.Request.Port,o.Request.Username,o.Request.PrivateKeyPath));var text=string.Join(Environment.NewLine,commands);if(text.Length==0){Show("No local private-key path is available for these commands.",true);return;}var package=new DataPackage();package.SetText(text);Clipboard.SetContent(package);Show("PowerShell-safe connection commands copied.");
     }
-    private async Task ExportResultsAsync(){var selected=SelectedOutcomes().ToArray();if(selected.Length==0)throw new ArgumentException("There are no results in this selection.");var file=await SavePicker("ssh-results","JSON results",".json").PickSaveFileAsync();if(file is null)return;var exported=selected.Select(o=>new{o.Request.Host,o.Request.Port,o.Request.Username,State=o.State.ToString(),o.Verified,o.Fingerprint,o.Error});await File.WriteAllTextAsync(file.Path,JsonSerializer.Serialize(exported,new JsonSerializerOptions{WriteIndented=true}));Show("Filtered results exported. Credentials and private-key data were omitted.");}
+    private async Task ExportResultsAsync(){var selected=SelectedOutcomes().ToArray();if(selected.Length==0)throw new ArgumentException("There are no results in this selection, or its search is still running.");var file=await SavePicker("ssh-results","JSON results",".json").PickSaveFileAsync();if(file is null||!await ConfirmOverwriteAsync(file.Path))return;var exported=selected.Select(o=>new{o.Request.Host,o.Request.Port,o.Request.Username,State=o.State.ToString(),Installation=o.Installation.ToString(),Verification=o.Verification.ToString(),RetryAction=o.RetryAction.ToString(),o.CancellationRequested,o.Verified,o.Fingerprint,o.Error});await WriteExportAsync(file.Path,JsonSerializer.Serialize(exported,new JsonSerializerOptions{WriteIndented=true}));Show("Filtered results exported. Credentials and private-key data were omitted.");}
+
+    private async Task<bool> ConfirmOverwriteAsync(string path)
+    {
+        if(!File.Exists(path))return true;
+        var first=new CheckBox{Content="I have checked the exact output file."};var second=new CheckBox{Content="I authorize replacing its current contents."};
+        var slider=new Slider{Header="Move to 100 to authorize replacement",Minimum=0,Maximum=100,StepFrequency=1,IsEnabled=false};
+        var dialog=new ContentDialog{XamlRoot=Root.XamlRoot,Title="Replace the selected output file?",PrimaryButtonText="Replace file",CloseButtonText="Emergency exit",DefaultButton=ContentDialogButton.Close,IsPrimaryButtonEnabled=false};
+        void Update(){slider.IsEnabled=first.IsChecked==true&&second.IsChecked==true;if(!slider.IsEnabled)slider.Value=0;dialog.IsPrimaryButtonEnabled=slider.IsEnabled&&slider.Value==100;}
+        first.Checked+=(_,_)=>Update();first.Unchecked+=(_,_)=>Update();second.Checked+=(_,_)=>Update();second.Unchecked+=(_,_)=>Update();slider.ValueChanged+=(_,_)=>Update();
+        dialog.Content=Row(new ScopedSearchBox("export.overwrite","Search confirmation options"),Text(path),Text("The selected destination already exists, including a new empty file created by the save picker. Its current contents will be replaced. Cancel leaves those contents unchanged."),first,second,slider);
+        return await dialog.ShowAsync()==ContentDialogResult.Primary&&first.IsChecked==true&&second.IsChecked==true&&slider.Value==100;
+    }
+    private static async Task WriteExportAsync(string path,string content)
+    {
+        var temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
+        try{await File.WriteAllTextAsync(temporary,content,new UTF8Encoding(false));File.Move(temporary,path,true);}
+        finally{if(File.Exists(temporary))File.Delete(temporary);}
+    }
 
     private void BuildSettings()
     {
         var panel=Row(Search("settings.general","Search options"));
-        var displayName=new TextBox{Header=L("Display name"),Text=preferences.DisplayName};panel.Children.Add(displayName);
+        var displayName=new TextBox{Header=L("Display name"),Text=preferences.DisplayName};localizedHeaders[displayName]="Display name";panel.Children.Add(displayName);
         void Choices<T>(string heading,IEnumerable<T> values,T current,Action<T> apply) where T:struct,Enum
-        {var group=Row(Text(heading));foreach(var value in values){var radio=new RadioButton{Content=L(value.ToString()),IsChecked=EqualityComparer<T>.Default.Equals(current,value),GroupName=heading};radio.Checked+=(_,_)=>apply(value);group.Children.Add(radio);}panel.Children.Add(Card(group));}
+        {var group=Row(Text(heading));foreach(var value in values){var radio=new RadioButton{Content=L(value.ToString()),IsChecked=EqualityComparer<T>.Default.Equals(current,value),GroupName=heading};localized[radio]=value.ToString();radio.Checked+=(_,_)=>apply(value);group.Children.Add(radio);}panel.Children.Add(Card(group));}
         Choices("Theme",Enum.GetValues<WorkspaceTheme>(),preferences.Theme,v=>{preferences=preferences with{Theme=v};ApplyPreferences();});
         Choices("Language",Enum.GetValues<WorkspaceLanguage>(),preferences.Language,v=>preferences=preferences with{Language=v});
         Choices("Density",Enum.GetValues<WorkspaceDensity>(),preferences.Density,v=>{preferences=preferences with{Density=v};ApplyPreferences();});
-        var en=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.EnglishFunnyLevel,Header=L("English funny level")};en.ValueChanged+=(_,_)=>{preferences=preferences with{EnglishFunnyLevel=(int)en.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(en);
-        var yue=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.CantoneseFunnyLevel,Header=L("Cantonese funny level")};yue.ValueChanged+=(_,_)=>{preferences=preferences with{CantoneseFunnyLevel=(int)yue.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(yue);
+        var en=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.EnglishFunnyLevel,Header=L("English funny level")};localizedHeaders[en]="English funny level";en.ValueChanged+=(_,_)=>{preferences=preferences with{EnglishFunnyLevel=(int)en.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(en);
+        var yue=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.CantoneseFunnyLevel,Header=L("Cantonese funny level")};localizedHeaders[yue]="Cantonese funny level";yue.ValueChanged+=(_,_)=>{preferences=preferences with{CantoneseFunnyLevel=(int)yue.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(yue);
         panel.Children.Add(Text("Funny levels style message tone; operation facts do not change. Both languages default to level 5. Full message-category coverage is still being implemented."));
-        var reduced=new CheckBox{Content=L("Reduced motion"),IsChecked=preferences.ReducedMotion};var visible=new CheckBox{Content=L("Show accessibility control"),IsChecked=preferences.AccessibilityButtonVisible};panel.Children.Add(reduced);panel.Children.Add(visible);
-        panel.Children.Add(AsyncAction("Save settings",async()=>{preferences=(preferences with{DisplayName=displayName.Text.Trim(),ReducedMotion=reduced.IsChecked==true,AccessibilityButtonVisible=visible.IsChecked==true}).Validate();await data.Settings.SaveAsync(preferences);ApplyPreferences();DetachFields();BuildPages();Navigate("Settings");Show("Settings saved.");},true));
+        var reduced=new CheckBox{Content=L("Reduced motion"),IsChecked=preferences.ReducedMotion};var visible=new CheckBox{Content=L("Show accessibility control"),IsChecked=preferences.AccessibilityButtonVisible};localized[reduced]="Reduced motion";localized[visible]="Show accessibility control";panel.Children.Add(reduced);panel.Children.Add(visible);
+        panel.Children.Add(AsyncAction("Save settings",async()=>{var candidate=(preferences with{DisplayName=displayName.Text.Trim(),ReducedMotion=reduced.IsChecked==true,AccessibilityButtonVisible=visible.IsChecked==true}).Validate();await data.Settings.SaveAsync(candidate);preferences=candidate;ApplyPreferences();RefreshLocalization();Navigate("Settings");Show(L("Settings saved."));},true));
         panel.Children.Add(Text("Stored in the private workspace settings record. Compiled defaults: system theme, comfortable density, English, 14-point UI text. Advanced appearance, per-element locks and schedules remain incomplete."));pages["Settings"]=Row(Card(panel));
     }
-    private void DetachFields()
+    private void KeySelected(object sender,SelectionChangedEventArgs e){if(keyList.SelectedItem is KeyEntry key){selectedKey=key;UpdateKeyLabel();}}
+    private void ResultSelected(object sender,SelectionChangedEventArgs e){if(resultList.SelectedItem is OutcomeRow item)resultDetail.Text=OutcomeText(item.Outcome);}
+    private void RefreshLocalization()
     {
-        PageHost.Children.Clear();foreach(var element in new FrameworkElement[]{nameBox,hostsBox,userBox,portBox,passwordBox,rememberPassword,keyLabel,connectionList,keyList,resultList,resultDetail,progress,notificationList})if(element.Parent is Panel parent)parent.Children.Remove(element);
+        foreach(var pair in localized.ToArray())
+        {
+            if(pair.Key is TextBlock text)text.Text=L(pair.Value);
+            else if(pair.Key is ContentControl control)control.Content=L(pair.Value);
+        }
+        foreach(var pair in searches)if(searchLabels.TryGetValue(pair.Key,out var label))pair.Value.SetPlaceholder(L(label));
+        foreach(var pair in localizedHeaders){if(pair.Key is TextBox field)field.Header=L(pair.Value);else if(pair.Key is Slider slider)slider.Header=L(pair.Value);}
+        nameBox.Header=L("Display name");hostsBox.Header=L("Hosts");userBox.Header=L("Username");portBox.Header=L("Port");passwordBox.Header=L("Password");rememberPassword.Content=L("Remember password in Credential Manager");
+        PageTitle.Text=L(route);UpdateKeyLabel();RefreshConnections();RefreshKeys();RefreshResults();RefreshHistory();
     }
     private void BuildTools()
     {
         var regex=Search("tools.regex","Regex workbench");pages["Tools"]=Row(Card(Row(Text("Regex workbench",true),regex,Text("Use the adjacent builder to evaluate local patterns, captures and replacements."))),Card(Row(Text("Additional tools",true),Text("Converter, local-model and server services are present, but their complete native management surfaces are not implemented. No installation, server lifecycle or model download is implied by this status."))));
     }
     private readonly ListView notificationList=new(){MaxHeight=500};
-    private void BuildHistory(){pages["History"]=Row(Card(Row(Search("history.notifications","Search results",(_,_)=>RefreshHistory()),notificationList,Action("Refresh",RefreshHistory),Text("This view shows the current session's notifications. Persistent revision browsing and restore remain incomplete."))));}
-    private void RefreshHistory(){if(searches.TryGetValue("history.notifications",out var query))notificationList.ItemsSource=searchEngine.Filter(notifications,x=>x,query.Query).Reverse().ToArray();}
+    private void BuildHistory(){pages["History"]=Row(Card(Row(Search("history.notifications","Search results",(_,_)=>RefreshHistory()),notificationList,historyEmpty,Action("Refresh",RefreshHistory),Text("This view shows the current session's notifications. Persistent revision browsing and restore remain incomplete."))));}
+    private void RefreshHistory(){if(searches.TryGetValue("history.notifications",out var query))_=FilterRecordsAsync("history.notifications",notifications.AsEnumerable().Reverse().ToArray(),x=>x,query.Query,(matches,error)=>{notificationList.ItemsSource=matches;EmptyCaption(historyEmpty,matches.Length,error,"No matching records");});}
+    private void EmptyCaption(TextBlock target,int count,string? error,string empty)
+    {target.Text=error??(count==0?L(empty):"");target.Visibility=target.Text.Length==0?Visibility.Collapsed:Visibility.Visible;}
+    private async Task FilterRecordsAsync<T>(string scope,IReadOnlyList<T> source,Func<T,string> text,SearchQuery query,Action<T[],string?> apply)
+    {
+        if(filterRequests.Remove(scope,out var previous)){previous.Cancel();previous.Dispose();}
+        var request=new CancellationTokenSource();filterRequests[scope]=request;var token=request.Token;
+        // Snapshot all display data on the UI thread. Background evaluation never reads controls.
+        var rows=source.Select(value=>(Value:value,Text:text(value))).ToArray();
+        try
+        {
+            await Task.Delay(120,token);
+            var result=await Task.Run(()=>
+            {
+                var matches=new List<T>();var elapsed=System.Diagnostics.Stopwatch.StartNew();
+                foreach(var row in rows)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if(elapsed.ElapsedMilliseconds>500)return (Items:Array.Empty<T>(),Error:(string?)"The collection search exceeded its total work limit. Simplify the expression.");
+                    if(query.Text.Length==0){matches.Add(row.Value);continue;}
+                    var evaluated=searchEngine.Evaluate(row.Text,query);
+                    if(evaluated.ValidationError is not null)return (Items:Array.Empty<T>(),Error:evaluated.ValidationError);
+                    if(evaluated.Matches.Count>0)matches.Add(row.Value);
+                }
+                return (Items:matches.ToArray(),Error:(string?)null);
+            },token);
+            if(!closed&&!token.IsCancellationRequested&&filterRequests.TryGetValue(scope,out var active)&&ReferenceEquals(active,request))apply(result.Items,result.Error);
+        }
+        catch(OperationCanceledException){}
+        catch(Exception){if(!closed&&!token.IsCancellationRequested)apply([],"The search could not complete. The source records are unchanged.");}
+    }
     private void BuildHelp(){pages["Help"]=Row(Card(Row(Search("help.articles","Search options"),Text("Install a public key",true),Text("1. Enter the destination and account.\n2. Choose an OpenSSH public key.\n3. Review the exact targets.\n4. Independently verify a new host fingerprint before approval.\n5. Inspect each result. A cancelled operation can retain completed remote changes."),Text("Keyboard: Ctrl+Shift+F opens Commands. Tab moves between controls. Native title-bar controls support window management."),Text("About",true),Text("WinSshCopyId · Native Windows SSH key installation\nThis development workspace does not claim full required-feature completion."))));}
     private void Show(string message,bool error=false)
     {
@@ -361,12 +450,12 @@ public sealed partial class MainWindow : Window
     private FileSavePicker SavePicker(string name,string description,string extension){var picker=new FileSavePicker{SuggestedFileName=name};WinRT.Interop.InitializeWithWindow.Initialize(picker,WinRT.Interop.WindowNative.GetWindowHandle(this));picker.FileTypeChoices.Add(description,new List<string>{extension});return picker;}
     private void OpenNavigation(FrameworkElement anchor,string scope)
     {
-        var list=new ListView{MaxHeight=380};var query=new ScopedSearchBox(scope,L("Workspace tabs"));void Filter()=>list.ItemsSource=searchEngine.Filter(destinations,x=>L(x),query.Query).ToArray();query.QueryChanged+=(_,_)=>Filter();Filter();
+        var list=new ListView{MaxHeight=380};var query=new ScopedSearchBox(scope,L("Workspace tabs"));void Filter(){list.IsEnabled=false;_=FilterRecordsAsync(scope,destinations,x=>L(x),query.Query,(matches,error)=>{list.ItemsSource=matches;list.IsEnabled=true;if(error is not null)Show(error,true);});}query.QueryChanged+=(_,_)=>Filter();Filter();
         var flyout=new Flyout{Content=Row(query,list),Placement=Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Bottom};list.SelectionChanged+=(_,_)=>{if(list.SelectedItem is string target){flyout.Hide();Navigate(target);CompactTabs.Focus(FocusState.Programmatic);}};flyout.ShowAt(anchor);
     }
     private void OpenConnectionsDrawer(FrameworkElement anchor)
     {
-        var query=new ScopedSearchBox("connections.compact",L("Search connections"));var list=new ListView{MaxHeight=380};void Filter()=>list.ItemsSource=searchEngine.Filter(connections,c=>c.ToString(),query.Query).ToArray();query.QueryChanged+=(_,_)=>Filter();Filter();var flyout=new Flyout{Content=Row(query,list,Action("New connection",NewConnection))};list.SelectionChanged+=(_,_)=>{if(list.SelectedItem is ConnectionRecord item){connectionList.SelectedItem=item;flyout.Hide();}};flyout.ShowAt(anchor);
+        var query=new ScopedSearchBox("connections.compact",L("Search connections"));var list=new ListView{MaxHeight=380};void Filter(){list.IsEnabled=false;_=FilterRecordsAsync("connections.compact",connections.ToArray(),c=>c.ToString(),query.Query,(matches,error)=>{list.ItemsSource=matches;list.IsEnabled=true;if(error is not null)Show(error,true);});}query.QueryChanged+=(_,_)=>Filter();Filter();var flyout=new Flyout{Content=Row(query,list,Action("New connection",NewConnection))};list.SelectionChanged+=(_,_)=>{if(list.SelectedItem is ConnectionRecord item){SelectConnection(item);flyout.Hide();}};flyout.ShowAt(anchor);
     }
     private void OpenPalette(FrameworkElement anchor)=>OpenNavigation(anchor,"palette.commands");
     private void GlobalCancel_Click(object sender,RoutedEventArgs e)=>CancelOperation();

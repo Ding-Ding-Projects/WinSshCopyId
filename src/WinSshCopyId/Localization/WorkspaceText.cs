@@ -5,6 +5,10 @@ public static class WorkspaceText
 {
     private static readonly Dictionary<string,string> Cantonese = new()
     {
+        ["Settings saved."]="設定已儲存。",
+        ["No saved connections. Add a connection or import a profile."]="未有已儲存連線。請新增連線或匯入設定檔。",
+        ["No public keys. Import a public key or generate a new pair."]="未有公開金鑰。請匯入公開金鑰或產生新金鑰組。",
+        ["No results yet. Start an installation from Connections."]="未有結果。請先在連線頁面開始安裝。",
         ["Connections"]="連線",["Keys"]="金鑰",["Results"]="結果",["Tools"]="工具",["History"]="歷史",["Settings"]="設定",["Help"]="說明",
         ["Commands"]="指令",["Accessibility"]="無障礙",["Workspace tabs"]="工作區分頁",["Search connections"]="搜尋連線",["Search options"]="搜尋選項",["Search keys"]="搜尋金鑰",["Search results"]="搜尋結果",
         ["New connection"]="新增連線",["Save connection"]="儲存連線",["Import profile"]="匯入設定檔",["Export profile"]="匯出設定檔",["Display name"]="顯示名稱",["Hosts"]="主機",["Username"]="使用者名稱",["Port"]="連接埠",["Public key"]="公開金鑰",["Choose public key"]="選擇公開金鑰",
