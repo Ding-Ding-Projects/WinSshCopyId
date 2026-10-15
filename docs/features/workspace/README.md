@@ -4,3 +4,5 @@ This folder documents the native .NET 8 workspace service foundation. User-inter
 
 - [Settings, search and scheduling](settings-search-scheduling.md)
 - [Local replacement import and history boundaries](privacy-and-history.md)
+- [Protected snapshots and shared mode](protected-history-shared-mode.md)
+- [Authentication and per-element lock services](security.md)

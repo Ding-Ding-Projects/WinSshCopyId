@@ -16,7 +16,7 @@ public sealed class PersonalVocabulary(IPrivateStorage storage)
         if (root.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Expected a versioned JSON object.");
         var properties = root.EnumerateObject().ToArray();
         if (properties.Length != 2 || properties.Select(p => p.Name).Distinct(StringComparer.Ordinal).Count() != 2 ||
-            !root.TryGetProperty("schemaVersion", out var version) || !version.TryGetInt32(out var number) || number != 1 ||
+            !root.TryGetProperty("schemaVersion", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number != 1 ||
             !root.TryGetProperty("entries", out var values) || values.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException("Unsupported JSON schema.");
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
