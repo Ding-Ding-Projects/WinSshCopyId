@@ -15,11 +15,12 @@ $mainBase=(& git merge-base $SourceCommit origin/main).Trim()
 if($LASTEXITCODE -ne 0 -or !$mainBase) {throw 'Cannot prove candidate main lineage.'}
 & git merge-base --is-ancestor $mainBase $SourceCommit
 if($LASTEXITCODE -ne 0) {throw 'Release source must descend from main lineage.'}
+$m=Get-Content build/manifest.json -Raw | ConvertFrom-Json
 $receipt=Get-Content artifacts/installer-receipt.json -Raw | ConvertFrom-Json
-if($receipt.sourceCommit -ne $SourceCommit -or !$receipt.unsigned -or $receipt.manifestSha256 -ne (Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash) {throw 'Installer receipt source or signing mismatch.'}
+if($receipt.packageId -ne $m.packageId -or $receipt.sourceCommit -ne $SourceCommit -or !$receipt.unsigned -or $receipt.manifestSha256 -ne (Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash) {throw 'Installer receipt source or signing mismatch.'}
 $assets=@()
 foreach($asset in $receipt.assets) {
-  if($asset.name -notmatch '^(Setup\.exe|RELEASES|WinSshCopyId-[0-9.]+-full\.nupkg)$') {throw 'Unexpected release asset name.'}
+  if($asset.name -notmatch ('^(Setup\.exe|RELEASES|'+[regex]::Escape($m.packageId)+'-[0-9.]+-full\.nupkg)$')) {throw 'Unexpected release asset name.'}
   $path=Join-Path 'artifacts/releases' $asset.name
   if((Get-Item $path).Length -ne $asset.bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $asset.sha256) {throw "Release asset mismatch: $($asset.name)"}
   $assets+=$path
@@ -52,6 +53,7 @@ Invoke-Gh @('release','download',$tag,'--repo',$Repository,'--dir',$verify) | Ou
 foreach($asset in $receipt.assets) {if((Get-FileHash -LiteralPath (Join-Path $verify $asset.name) -Algorithm SHA256).Hash -ne $asset.sha256) {throw 'Published download hash mismatch.'}}
 @{tag=$tag;sourceCommit=$SourceCommit;url=$release.url;isDraft=$release.isDraft;isPrerelease=$release.isPrerelease;verifiedAssets=$receipt.assets} | ConvertTo-Json -Depth 6 | Set-Content artifacts/release-receipt.json
 Write-Host "Verified normal release: $($release.url)"
+
 
 
 

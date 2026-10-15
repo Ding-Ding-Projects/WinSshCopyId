@@ -40,3 +40,9 @@ The pinned official MinGit x64 archive is verified against its published Git for
 
 Hosted output retention is one day. Successful publication uploads only receipts because release assets are durable; failed or cancelled runs preserve only explicitly safe installer outputs and receipts when present. Dependency caches and source trees are never uploaded.
 
+
+## Installer and persistent data separation
+
+The inaugural Squirrel package ID is `WinSshCopyId.Desktop`, declared once in `build/manifest.json` and passed into the NuGet specification. Stock Squirrel therefore installs under `%LocalAppData%\WinSshCopyId.Desktop`. The product executable and AppMarker remain `WinSshCopyId`; persistent settings and encrypted data remain under `%LocalAppData%\WinSshCopyId`. These are sibling directories, with neither containing the other. Packaging never migrates, deletes, or initializes the data directory.
+
+The package ID drives input and full-package filenames, installer receipts, release validation and `update-config.json`. The update feed URL stays unchanged. This identity was selected before the first release or installed update identity existed. An established installed identity must not be renamed through this procedure. Installation and preservation behavior still require actual current-host acceptance; source path separation alone is not that proof.

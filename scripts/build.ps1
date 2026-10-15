@@ -12,6 +12,7 @@ function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
 $root=Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $m=Get-Content (Join-Path $root 'build/manifest.json') -Raw | ConvertFrom-Json
+if($m.packageId -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]+$' -or $m.packageId -eq $m.product -or $m.product -ne 'WinSshCopyId' -or $m.executable -ne 'WinSshCopyId.exe') {throw 'Installer package identity must remain distinct from persistent application data and executable identity.'}
 $silent=$env:SILENT -eq '1'
 $run=$env:RUN_AFTER_BUILD -eq '1'
 $site=$false
@@ -109,12 +110,12 @@ try {
   Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
   $updaterHash=(Get-FileHash -LiteralPath $updaterSource -Algorithm SHA256).Hash
   if((Get-FileHash -LiteralPath (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
-  @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
+  @{updateFeed=$m.updateFeed;version=$version;packageId=$m.packageId} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   @{sourceCommit=$source;version=$version;builtAtUtc=$buildStartedUtc;runtime=$m.runtime;manifestSha256=$manifestHash} | ConvertTo-Json | Set-Content (Join-Path $publish 'build-info.json')
   $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
-  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  $receipt=@{schemaVersion=1;packageId=$m.packageId;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
 
@@ -124,9 +125,9 @@ try {
     if(Test-Path $releases) {Remove-Item -LiteralPath $releases -Recurse -Force}
     New-Item -ItemType Directory -Force $releases | Out-Null
     $packages=Resolve-Output 'artifacts/packages' @('artifacts/packages'); New-Item -ItemType Directory -Force $packages | Out-Null
-    Invoke-Checked (Join-Path $tools 'nuget.exe') @('pack','packaging/WinSshCopyId.nuspec','-Version',$version,'-Properties',"payload=$publish",'-OutputDirectory',$packages,'-NoDefaultExcludes','-NonInteractive')
-    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.com') @('--releasify',(Join-Path $packages "WinSshCopyId.$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
-    foreach($name in @('Setup.exe','RELEASES',"WinSshCopyId-$version-full.nupkg")) {
+    Invoke-Checked (Join-Path $tools 'nuget.exe') @('pack','packaging/WinSshCopyId.nuspec','-Version',$version,'-Properties',"payload=$publish;packageId=$($m.packageId)",'-OutputDirectory',$packages,'-NoDefaultExcludes','-NonInteractive')
+    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.com') @('--releasify',(Join-Path $packages "$($m.packageId).$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
+    foreach($name in @('Setup.exe','RELEASES',"$($m.packageId)-$version-full.nupkg")) {
       $path=Join-Path $releases $name
       if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Missing installer output: $name"}
     }
@@ -134,7 +135,7 @@ try {
     if((Get-AuthenticodeSignature $setup).Status -ne 'NotSigned') {throw 'Expected an unsigned Squirrel setup executable.'}
     if((Get-Source) -ne $source -or (Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Source or manifest changed during packaging.'}
     $assets=@(Get-ChildItem $releases -File | ForEach-Object { @{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash} })
-    @{schemaVersion=1;sourceCommit=$source;version=$version;manifestSha256=$manifestHash;unsigned=$true;assets=$assets} | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/installer-receipt.json'
+    @{schemaVersion=1;packageId=$m.packageId;sourceCommit=$source;version=$version;manifestSha256=$manifestHash;unsigned=$true;assets=$assets} | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/installer-receipt.json'
     $assets | ForEach-Object {Write-Host "$($_.name) $($_.bytes) bytes SHA256 $($_.sha256)"}
     Write-Host 'Genuine unsigned Squirrel.Windows installer produced. Installation and runtime verification are separate.'
   }
@@ -142,6 +143,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 

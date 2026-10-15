@@ -2,7 +2,7 @@ function Test-BuildReceipt([string]$ReceiptPath,[string]$Publish,[string]$Source
   if(!(Test-Path -LiteralPath $ReceiptPath -PathType Leaf)) {return $false}
   try {
     $receipt=Get-Content -LiteralPath $ReceiptPath -Raw | ConvertFrom-Json
-    if($receipt.schemaVersion -ne 1 -or $receipt.sourceCommit -ne $Source -or $receipt.manifestSha256 -ne $ManifestHash -or $receipt.version -ne $Version -or $receipt.runtime -ne $Runtime -or $receipt.sourceTree -ne $SourceTree -or $receipt.indexTree -ne $IndexTree -or $receipt.command -ne 'build.bat /s' -or $receipt.publishDirectory -ne $m.publishDirectory -or $receipt.executable -ne $m.executable -or $receipt.project -ne $m.project) {return $false}
+    if($receipt.packageId -ne $m.packageId -or $receipt.schemaVersion -ne 1 -or $receipt.sourceCommit -ne $Source -or $receipt.manifestSha256 -ne $ManifestHash -or $receipt.version -ne $Version -or $receipt.runtime -ne $Runtime -or $receipt.sourceTree -ne $SourceTree -or $receipt.indexTree -ne $IndexTree -or $receipt.command -ne 'build.bat /s' -or $receipt.publishDirectory -ne $m.publishDirectory -or $receipt.executable -ne $m.executable -or $receipt.project -ne $m.project) {return $false}
     $actual=@(Get-ChildItem -LiteralPath $Publish -Recurse -File -Force)
     if($actual.Count -ne @($receipt.files).Count -or $actual.Count -eq 0) {return $false}
     $seen=@{}
@@ -19,4 +19,5 @@ function Test-BuildReceipt([string]$ReceiptPath,[string]$Publish,[string]$Source
     return $true
   } catch {return $false}
 }
+
 

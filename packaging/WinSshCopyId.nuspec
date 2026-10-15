@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <metadata>
-    <id>WinSshCopyId</id>
+    <id>$packageId$</id>
     <version>$version$</version>
     <title>WinSshCopyId</title>
     <authors>Ding-Ding-Projects</authors>
@@ -12,3 +12,4 @@
   </metadata>
   <files><file src="$payload$\**\*" target="lib\net45" /></files>
 </package>
+
