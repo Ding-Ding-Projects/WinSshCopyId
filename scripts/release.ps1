@@ -2,6 +2,10 @@ param([Parameter(Mandatory=$true)][string]$SourceCommit,[Parameter(Mandatory=$tr
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 Set-Location (Split-Path $PSScriptRoot -Parent)
+function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
+  $stream=[IO.File]::OpenRead($LiteralPath);$digest=[Security.Cryptography.HashAlgorithm]::Create($Algorithm)
+  try {[pscustomobject]@{Hash=([BitConverter]::ToString($digest.ComputeHash($stream))).Replace('-','')}} finally {$stream.Dispose();$digest.Dispose()}
+}
 function Invoke-Gh([string[]]$Arguments) { $result=& gh @Arguments; if($LASTEXITCODE -ne 0) {throw "GitHub CLI failed: $($Arguments[0])"}; return $result }
 if($SourceCommit -notmatch '^[a-f0-9]{40}$' -or $RunId -notmatch '^\d+$' -or $RunAttempt -notmatch '^\d+$') {throw 'Invalid exact source or run identity.'}
 if((& git rev-parse HEAD).Trim() -ne $SourceCommit -or @(& git status --porcelain).Count -ne 0) {throw 'Publisher requires unchanged exact source.'}
@@ -48,4 +52,5 @@ Invoke-Gh @('release','download',$tag,'--repo',$Repository,'--dir',$verify) | Ou
 foreach($asset in $receipt.assets) {if((Get-FileHash (Join-Path $verify $asset.name) -Algorithm SHA256).Hash -ne $asset.sha256) {throw 'Published download hash mismatch.'}}
 @{tag=$tag;sourceCommit=$SourceCommit;url=$release.url;isDraft=$release.isDraft;isPrerelease=$release.isPrerelease;verifiedAssets=$receipt.assets} | ConvertTo-Json -Depth 6 | Set-Content artifacts/release-receipt.json
 Write-Host "Verified normal release: $($release.url)"
+
 
