@@ -268,4 +268,3 @@ public sealed class KeyManager
         catch (ArgumentException ex) { error = ex.Message; return false; }
     }
 }
-
