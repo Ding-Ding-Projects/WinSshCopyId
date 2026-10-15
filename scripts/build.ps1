@@ -55,6 +55,8 @@ try {
     Get-VerifiedDownload $m.nuget (Join-Path $tools 'nuget.exe') SHA256
     Get-VerifiedDownload $m.squirrel (Join-Path $tools 'squirrel.zip') SHA256
     Expand-Verified (Join-Path $tools 'squirrel.zip') (Join-Path $tools 'squirrel') 'tools/Squirrel.exe'
+    Get-VerifiedDownload $m.mingit (Join-Path $tools 'mingit.zip') SHA256
+    Expand-Verified (Join-Path $tools 'mingit.zip') (Join-Path $tools 'mingit') 'cmd/git.exe'
   } finally {$lock.Dispose()}
   $dotnet=Join-Path $tools 'dotnet/dotnet.exe'
   $env:DOTNET_ROOT=Split-Path $dotnet; $env:DOTNET_MULTILEVEL_LOOKUP='0'; $env:DOTNET_CLI_TELEMETRY_OPTOUT='1'
@@ -84,6 +86,21 @@ try {
     if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
     New-Item -ItemType Directory -Force $publish | Out-Null
   Invoke-Checked $dotnet @('publish',$m.project,'-c','Release','-r',$m.runtime,'--self-contained','true','-p:Platform=x64','-p:WindowsAppSDKSelfContained=true','-p:WindowsPackageType=None',"-p:Version=$version",'-o',$publish)
+  if($m.worker.directory -ne 'Tools/Worker' -or $m.worker.manifest -ne 'Tools/worker-manifest.json' -or $m.mingit.directory -ne 'Tools/MinGit' -or $m.mingit.manifest -ne 'Tools/mingit-manifest.json') {throw 'Unexpected bundled tool layout.'}
+  $worker=Assert-Contained (Join-Path $publish $m.worker.directory) $publish
+  New-Item -ItemType Directory -Force $worker | Out-Null
+  Invoke-Checked $dotnet @('publish',$m.worker.project,'-c','Release','-r',$m.runtime,'--self-contained','true',"-p:Version=$version",'-o',$worker)
+  foreach($name in @($m.worker.executable,'coreclr.dll','hostfxr.dll')) {if(!(Test-Path -LiteralPath (Join-Path $worker $name) -PathType Leaf)) {throw "Worker payload missing: $name"}}
+  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  @{sourceCommit=$source;runtime=$m.runtime;members=$workerMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.worker.manifest)
+  $gitPayload=Assert-Contained (Join-Path $publish $m.mingit.directory) $publish
+  New-Item -ItemType Directory -Force $gitPayload | Out-Null
+  Get-ChildItem (Join-Path $tools 'mingit') -Force | Copy-Item -Destination $gitPayload -Recurse -Force
+  if(!(Test-Tree $gitPayload (Join-Path $tools 'mingit.zip') -Diagnose -OwnerRoot $publish)) {throw 'Bundled MinGit differs from its pinned archive.'}
+  if(!(Test-Path -LiteralPath (Join-Path $gitPayload $m.mingit.license))) {throw 'Bundled MinGit license is missing.'}
+  Invoke-Checked (Join-Path $gitPayload $m.mingit.executable) @('--version')
+  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  @{sourceCommit=$source;runtime=$m.runtime;version=$m.mingit.version;executable=$m.mingit.executable;license=$m.mingit.license;sourceUrl=$m.mingit.sourceUrl;archiveSha256=$m.mingit.sha256;members=$gitMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.mingit.manifest)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
   $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
   Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
@@ -91,7 +108,7 @@ try {
   if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
-  $payload=@(Get-ChildItem $publish -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
+  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
   $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
@@ -121,6 +138,8 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
+
 
 
 

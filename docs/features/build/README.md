@@ -25,3 +25,9 @@ The configured unsigned Squirrel feed is recorded in `build/manifest.json` and c
 A fresh-host bootstrap, actual installer lifecycle, offline startup, and running updater have not been proven by these source files. A failed bootstrap reports the precise download or verification failure and returns a nonzero exit code. No installer fallback format is used. This category has no HTTP API, so Postman collections do not apply.
 
 
+
+## Bundled worker and local history runtime
+
+The build publishes `src/WinSshCopyId.ToolWorker` as a complete self-contained x64 payload under `Tools/Worker`. `Tools/worker-manifest.json`, outside that directory, binds the exact producer source and every worker member's slash-normalized relative path, byte length and SHA-256. This inventory is packaging proof only. Conversion remains unavailable until the native confined execution verifier supplies the adapter-specific runtime receipt.
+
+The pinned official MinGit x64 archive is verified against its published Git for Windows asset digest, fully extracted and inventoried, then bundled under `Tools/MinGit`. Its original `LICENSE.txt` and component licenses remain included. The exact corresponding source URL and archive digest are in `Tools/mingit-manifest.json`, with full member hashes, version, runtime and executable lookup `cmd/git.exe`. It is application-local and does not replace installed Git or change persistent PATH. Workspace history integration must resolve that exact packaged executable and preserve the existing encrypted-history boundary.

@@ -25,5 +25,29 @@
     "url": "https://api.nuget.org/v3-flatcontainer/squirrel.windows/2.0.1/squirrel.windows.2.0.1.nupkg",
     "sha256": "923E18ABB4FD50B5A4878A39DBCD042ED3F7EB68FC0F82C0955CD5380C921AC7"
   },
-  "requiredPayload": ["WinSshCopyId.exe", "WinSshCopyId.dll", "WinSshCopyId.runtimeconfig.json", "Microsoft.UI.Xaml.dll", "Microsoft.WindowsAppRuntime.dll", "coreclr.dll", "hostfxr.dll"]
+  "requiredPayload": [
+    "WinSshCopyId.exe",
+    "WinSshCopyId.dll",
+    "WinSshCopyId.runtimeconfig.json",
+    "Microsoft.UI.Xaml.dll",
+    "Microsoft.WindowsAppRuntime.dll",
+    "coreclr.dll",
+    "hostfxr.dll"
+  ],
+  "worker": {
+    "project": "src/WinSshCopyId.ToolWorker/WinSshCopyId.ToolWorker.csproj",
+    "directory": "Tools/Worker",
+    "manifest": "Tools/worker-manifest.json",
+    "executable": "WinSshCopyId.ToolWorker.exe"
+  },
+  "mingit": {
+    "version": "2.56.0.2",
+    "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.2/MinGit-2.56.0.2-64-bit.zip",
+    "sha256": "da35e72aa21c005a5a0d298cfbae110bc1609a815730ea0dde84b01a1b3cd3be",
+    "sourceUrl": "https://github.com/git-for-windows/git/tree/v2.56.0.windows.2",
+    "directory": "Tools/MinGit",
+    "executable": "cmd/git.exe",
+    "manifest": "Tools/mingit-manifest.json",
+    "license": "LICENSE.txt"
+  }
 }

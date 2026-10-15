@@ -33,10 +33,10 @@ function Get-ArchiveInventory([string]$Zip) {
     return $entries
   } finally {$archive.Dispose()}
 }
-function Test-Tree([string]$Directory,[string]$Zip,[switch]$Diagnose) {
+function Test-Tree([string]$Directory,[string]$Zip,[switch]$Diagnose,[string]$OwnerRoot=$tools) {
   if(!(Test-Path -LiteralPath $Directory -PathType Container)) {if($Diagnose){Write-Host 'Inventory mismatch: extraction directory is missing.'};return $false}
   try {
-    $null=Assert-Contained $Directory $tools
+    $null=Assert-Contained $Directory $OwnerRoot
     $expected=@(Get-ArchiveInventory $Zip)
     $actual=@(Get-ChildItem -LiteralPath $Directory -Recurse -File -Force)
     $valid=$true
@@ -104,4 +104,5 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
     throw
   }
 }
+
 
