@@ -1,27 +1,18 @@
 using Microsoft.UI.Xaml;
-
+using WinSshCopyId.UI;
 namespace WinSshCopyId;
-
-/// <summary>
-/// Application entry point. The WinUI XAML build generates Main() automatically.
-/// </summary>
 public partial class App : Application
 {
-    private Window? _window;
-
-    public App()
-    {
-        InitializeComponent();
-
-        // Last-resort guard: an unhandled exception escaping an async void event
-        // handler would otherwise terminate the process. Contain it so a
-        // recoverable I/O error (e.g. a file picker failing) does not crash the app.
-        UnhandledException += (_, e) => e.Handled = true;
-    }
-
+    private Window? window;
+    public App() { InitializeComponent(); }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
-        _window.Activate();
+        var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+        if (arguments.Any(a => a is "--squirrel-install" or "--squirrel-updated" or "--squirrel-uninstall" or "--squirrel-obsolete")) { Exit(); return; }
+        string? evidenceDirectory = null;
+        var index = Array.IndexOf(arguments, "--evidence-profile");
+        if (index >= 0) { if (index + 1 >= arguments.Length) { Exit(); return; } evidenceDirectory = arguments[index + 1]; }
+        try { window = new MainWindow(new WorkspaceData(evidenceDirectory)); window.Activate(); }
+        catch (ArgumentException) { Exit(); }
     }
 }
