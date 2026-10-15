@@ -43,7 +43,6 @@ public sealed class SshDeployer
 
         cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
-        using var cancellation = cancellationToken.Register(() => client.Dispose());
         HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
@@ -53,7 +52,7 @@ public sealed class SshDeployer
         };
 
         log($"Connecting to {username}@{host}:{port} ...");
-        try { client.Connect(); }
+        try { client.ConnectAsync(cancellationToken).GetAwaiter().GetResult(); }
         catch when (changedKey is not null) { throw changedKey; }
         log("Authenticated with password.");
         if (fingerprintRaw is not null)
@@ -64,7 +63,7 @@ public sealed class SshDeployer
         string script = BuildInstallScript(publicKeyLine);
         using SshCommand cmd = client.CreateCommand(script);
         cmd.CommandTimeout = _timeout;
-        cmd.Execute();
+        cmd.ExecuteAsync(cancellationToken).GetAwaiter().GetResult();
 
         string stdout = (cmd.Result ?? string.Empty).Trim();
         string stderr = (cmd.Error ?? string.Empty).Trim();
@@ -107,12 +106,11 @@ public sealed class SshDeployer
         SshInput.ValidateEndpoint(host, port);
         SshInput.ValidateUser(username);
         using var keyFile = OpenPrivateKey(privateKeyPath, passphrase);
-        var auth = new PrivateKeyAuthenticationMethod(username, keyFile);
+        var auth = new PrivateKeyAuthenticationMethod(username, new PreferredPrivateKeySource(keyFile));
         var connInfo = new ConnectionInfo(host, port, username, auth) { Timeout = _timeout };
 
         cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
-        using var cancellation = cancellationToken.Register(() => client.Dispose());
         HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
@@ -132,11 +130,11 @@ public sealed class SshDeployer
                 log("Host key mismatch. Connection stopped.");
             }
         };
-        try { client.Connect(); }
+        try { client.ConnectAsync(cancellationToken).GetAwaiter().GetResult(); }
         catch when (changedKey is not null) { throw changedKey; }
         using SshCommand cmd = client.CreateCommand("echo WINSSHCOPYID_OK");
         cmd.CommandTimeout = _timeout;
-        cmd.Execute();
+        cmd.ExecuteAsync(cancellationToken).GetAwaiter().GetResult();
         client.Disconnect();
 
         bool ok = cmd.ExitStatus == 0 && string.Equals((cmd.Result ?? string.Empty).Trim(), "WINSSHCOPYID_OK", StringComparison.Ordinal);
@@ -153,6 +151,14 @@ public sealed class SshDeployer
             if (string.IsNullOrEmpty(value)) throw new OperationCanceledException("Private key passphrase was not provided.");
             return new PrivateKeyFile(path, value);
         }
+    }
+
+    // Some modern servers disconnect on an obsolete RSA signature probe rather
+    // than allowing another algorithm. Prefer the existing SHA-2 algorithms.
+    private sealed class PreferredPrivateKeySource(PrivateKeyFile file) : IPrivateKeySource
+    {
+        public System.Collections.Generic.IReadOnlyCollection<Renci.SshNet.Security.HostAlgorithm> HostKeyAlgorithms { get; } =
+            file.HostKeyAlgorithms.OrderBy(algorithm => algorithm.Name == "ssh-rsa" ? 1 : 0).ToArray();
     }
 
     private ConnectionInfo BuildPasswordConnection(string host, int port, string username, string password)

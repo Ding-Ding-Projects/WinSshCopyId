@@ -1,0 +1,38 @@
+{
+  "observedAtUtc": "2026-10-15T04:17:12.9313706Z",
+  "engine": "Paramiko 5.0.0",
+  "loopbackTest": {
+    "passed": 1,
+    "failed": 0,
+    "acceptanceChecks": 9,
+    "durationSeconds": 28.9901961
+  },
+  "coreTests": {
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0
+  },
+  "ownedServerTeardownVerified": true,
+  "checks": [
+    "Unknown host rejected before password authentication",
+    "Explicit host approval precedes authentication and installs public key",
+    "Persisted host trust, duplicate install and genuine public-key SSH authentication verified",
+    "Generated RSA client identity authenticates with preferred existing SHA-2 signature algorithms",
+    "Changed host key hard-stops before authentication with expected and observed identities",
+    "Actual verification response failure retains installation identity and verification-only retry",
+    "Cancellation interrupts an actual active SSH command",
+    "Production 25-second command timeout observed",
+    "Real SSH partial batch retains success, uncertain cancelled mutation and unstarted remainder"
+  ],
+  "sourceSha256": {
+    "src/WinSshCopyId/Services/SshDeployer.cs": "eb3c1cd60c316334f6bd059ec82659bcf115b636e2c7e5e84d88f64adc378ce8",
+    "tests/WinSshCopyId.Services.Tests/LoopbackSshTests.cs": "0d464c9213425c95231cd004969cd47c27ed52c4522b0b4df5b1e25559b0f978",
+    "tests/WinSshCopyId.Services.Tests/ssh_fixture.py": "4db5ec681fc8a1590b496662e5012b15775e227ed06d53bd53bd479d34ab531b",
+    "tests/WinSshCopyId.Services.Tests/requirements.txt": "8145ec4902c5509086d6fdc537b27e3685fa1c064383763eeeb40e33aa88ae21"
+  },
+  "limitations": [
+    "Narrow command emulator; no POSIX shell execution or OpenSSH sshd interoperability claim.",
+    "No real user identity, credential vault or GUI acceptance.",
+    "An earlier task-owned temporary directory remains retained after automatic deletion approval was rejected; read-only verification confirmed its recorded process and listener absent."
+  ]
+}
