@@ -1,33 +1,41 @@
 # Continuation record
 
-Continue the approved calm-blue native WinUI 3 Material Design 3 conversion of
-WinSshCopyId, complete required features, x64 unsigned Squirrel delivery and
-standard hosted Windows 2022 builds. The goal remains unfinished.
+The approved full native WinUI 3 conversion remains unfinished. Latest requests:
+add missing info-icon guidance, preserve and push genuine screenshots, link the
+public screenshot website from the actual source README, and retain both rules
+in the shared private instructions.
 
-This integration includes delivery source bbda4599523c4bd90a4e30e3ab808659ee293bbe:
-literal archive hashing, the first separated Squirrel installation namespace,
-verified worker packaging and website build entrypoint support. Product identity,
-executable and existing data directory remain WinSshCopyId. Hosted verification
-and actual installation are pending. Seven managed converter fixtures passed
-real AppContainer execution against worker producer
-6cadf1ee59a5c61940cc243f7a9c3f2927dfc03b.
+Integrated source through e4ab8a15dcc61d8298a22673e2b1ff2183d8bc69 contains the native
+workspace, SSH and workspace services, tool foundation and publisher repair.
+Build 6a60fe013efa276614c641cbd650ab13169f0991 passed the root entrypoint;
+35 core and 11 UI logic checks passed. Native capture evidence remains source 817e9a5
+at 150% only. A full current-source capture and scale matrix remain pending.
 
-Separate native candidate 817e9a555d9783c26c8b3cff4daa9e43672bb548 passed focused
-150% normal/minimum UI checks. New profile-path and mixed-retry cancellation
-repairs are integrated from1324ed57053a17ba53cd302f6c730fa80d9cfdad and require
-another source-bound build. Documentation candidate
-b028536cb94e616bb2af78a71fc34be617e86072 has eleven local checks and genuine
-browser evidence for its now-integrated foundation and repairs. GitHub Pages is
-configured for workflow deployment, with live verification pending. The complete feature
-inventory remains incomplete. SSH loopback acceptance from
-f31877a701ef5b84b8234f4466ead0ed629536de passed nine checks with generated identities,
-exact cancellation/timeout assertions and verified owned teardown. Commands are
-emulated; POSIX/OpenSSH server interoperability remains unverified.
+Preserved branches:
+- codex/material-workspace 4ef11a2ef2fc2ddb54aa427e8cb13e97a13b6375:
+  23 primary info entries,61 behavioral checks, native runtime unverified.
+- codex/documentation-site 71a855dee2fd511e4025855517ee9982f74b473b:
+  compact info controls,14 checks and focused browser proof, full guidance partial.
+- codex/ssh-services f31877a701ef5b84b8234f4466ead0ed629536de:
+  35 core plus 9 real loopback assertions; command-emulation limitation.
+- codex/local-tools c7be71090e2d5744f90b19431c9c2fa66e3c2552:
+  seven actual confined managed converter fixtures; external engines incomplete.
+- codex/workspace-services 3657692a4522a8d096e02dd115c7b983653ee6aa:
+  58 workspace and 141 synthetic security checks; GUI wiring incomplete.
+- codex/build-delivery b3281d8aa65cdb2d937d67282c862005bdd2e8e0:
+  real unsigned packaging and bounded publisher helper.
 
-Preserve all task branches and evidence. Integrate independently completed work,
-push main and verify its exact remote ref. Use the selected current physical
-host and named hidden desktops without power/login changes or real user secrets.
-Never equate a normal release with complete verification. Host complete articles
-and wiki content on GitHub Pages, verify downloads and the exact About homepage.
-Read HANDOFF.md and ROADMAP.md for remaining work. No completion is claimed.
+Hosted run 38682271450 built/packaged but publication failed when Process.Start
+could not locate a CLI executable. No release/installation/update proof exists.
+Investigate executable resolution before another coordinated publication.
+The documentation website is live; its actual About homepage was verified.
+Public screenshot gallery:
+https://ding-ding-projects.github.io/WinSshCopyId-evidence/
+The actual source README contains this link; live gallery/image verification is pending.
 
+Source, branches, original captures and private receipts are preserved. Temporary
+profiles and one SSH fixture directory remain retained after automatic deletion
+approval rejection; owned runtime processes/listeners were verified absent.
+Do not delete active or incomplete work. Keep all remaining feature, migration,
+privacy, accessibility, offline, installer/update and evidence requirements open.
+Resume only with available account allowance. The goal is not complete.

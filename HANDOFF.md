@@ -60,3 +60,7 @@ homepage. Preserve branch work and original evidence throughout.
 No completed installation, update, full visual matrix, full feature inventory or
 live documentation deployment is claimed by this handoff.
 
+
+## Preservation update
+
+The native and publisher foundation is pushed through e4ab8a1. The later info-icon slices remain on their preserved branches with explicit coverage and runtime gaps. The source README now links the separate public screenshot gallery; its live verification is pending. Hosted run38682271450 failed during publisher Process.Start executable resolution after successful build and packaging. No release or installation is claimed. Full feature acceptance remains unfinished.
