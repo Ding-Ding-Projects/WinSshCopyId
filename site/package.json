@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"bundle":"node bundle-components.mjs"},"dependencies":{"@material/web":"2.5.0"},"devDependencies":{"esbuild":"0.28.2"}}

@@ -21,11 +21,11 @@ Calm blue Material Design 3 reading workspace: primary #285EA7, on-primary #FFFF
 
 ## Composition and responsive behavior
 
-A compact header holds the product mark, title and provenance. A horizontal navigation strip remains visible above the reading area. At 320px it scrolls internally rather than forcing body overflow. The desktop reading area uses an article index beside the content; below 760px the index collapses into an accessible disclosure. Article width is capped at 74ch. Tables and code scroll inside their own containers. Search controls and regex panel wrap into one column. Dialogs stay within viewport with internal scrolling.
+A compact header holds the product mark, title and provenance. Desktop tabs default to the left and support all four dock positions, grouping, pinning, reordering and bounded overflow. At 320px a compact navigation drawer retains those operations and restores focus. The desktop reading area uses an article index beside the content; below 760px the index collapses into an accessible disclosure. Article width is capped at 74ch. Tables and code scroll inside their own containers. Search controls and regex panel wrap into one column. Dialogs stay within viewport with internal scrolling.
 
 ## Interaction handoff
 
-Search is scoped to the current content collection. An adjacent builder exposes literal/regex mode, case sensitivity, whole-word matching, pattern, flags, sample text, match results and syntax errors. The panel stays anchored to its search field. Ctrl+Shift+F opens a searchable command palette with focus restoration. Notifications are non-modal and retained in a review center. Visitor preferences and local history persist only in browser storage. Personal wording is validated, local-only, replaceable and clearable; its values never enter exported diagnostics or history. All dynamic text uses textContent or equivalent escaping.
+Search is scoped to the current content collection. An adjacent full workbench owns engine/dialect disclosure, guided and raw patterns, flags, captures, replacement, tests/snippets, bounded worker evaluation, cancellation and explicit unsupported capabilities. The panel stays anchored to its search field. Ctrl+Shift+F opens a searchable command palette with focus restoration. Notifications are non-modal and retained in a review center. Visitor preferences and local history persist only in browser storage. Personal wording is validated, local-only, replaceable and clearable; its values never enter exported diagnostics or history. All dynamic text uses textContent or equivalent escaping.
 
 ## Reference tuples and acceptance
 
@@ -44,3 +44,4 @@ The independent design review of d4846d4 accepted the purpose, palette, boundari
 3. The generated content inventory maps every source document to its article route and heading anchors. Missing content is an acceptance error. Installer evidence requires schema version, version, exact source commit, immutable tag, published timestamp, platform, verification state and installer name, byte count, SHA-256 and immutable URL. Missing or invalid proof suppresses the download control.
 
 All advanced interactions and evidence absent from the first foundation remain explicit incomplete ledger entries. Independent review does not establish runtime or component conformance.
+
