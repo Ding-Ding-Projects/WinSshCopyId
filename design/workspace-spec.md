@@ -87,6 +87,50 @@ Each destination includes local search, full tabs, applicable bulk actions, expo
 
 Tabs default left and dock left/right/top/bottom; reorder, pin, group, group decoration, collapse, overflow, keyboard movement and persistence apply equally to nested settings/detail tabs. Four separate searches cover current strip, each group, groups, and all owned windows/workspaces. Move into group uses an anchored searchable picker, never an unbounded menu. Both text-based bulk-close predicates preview exact matches and exclude pinned/locked/unsaved work by default. Empty/invalid query cannot close tabs.
 
+## SSH review, trust and terminal-state contract
+
+These are distinct addressable design states, not synonyms for a generic warning. Each uses the selected connection's stable record identity, entered hostname and port, resolved endpoint when known, SSH host-key algorithm and complete fingerprint. Fingerprint values come from the real service and are copyable; the reference never fabricates one. Review shows the public-key fingerprint separately, explicitly labelled, so it cannot be confused with the server identity.
+
+| State id | Visible facts and permitted action | Transition and persistence |
+| --- | --- | --- |
+| `review` | Exact account, host, port, selected public-key identity and destination operation; Edit and Cancel remain available | Explicit Install begins inspection; merely opening review changes neither trust nor the remote host |
+| `unknown-host` | Host + port, algorithm, full observed fingerprint, no prior approval; ask the user to compare it with an independent trusted source | Explicit Approve this identity persists the exact endpoint/key binding through the native SSH trust store before continuing; Cancel writes no approval |
+| `changed-host` | Exact endpoint plus previous and observed algorithm/fingerprint; explain that identity differs | Hard stop: disable installation and do not replace the saved approval. Offer Cancel, copy fingerprints and documented investigation. No ordinary Retry, accept-any or bypass control |
+| `working` | Actual current phase, completed targets, active target, elapsed time and progress when measurable | Submit rejects re-entry; Cancel requests cancellation through the operation owner |
+| `cancelling` | Cancellation requested, active phase/target and completed changes retained | Keep this state until the service reports a terminal outcome; repeated Cancel is idempotent. Never show Cancelled from a button click alone |
+| `cancelled` | Exact completed, skipped and not-started targets, plus uncertain in-flight target if confirmation is unavailable | Completed SSH changes remain installed. Offer inspect/reconcile for uncertain targets; never silently roll back or claim that all effects were undone |
+| `partial` | Per-target terminal outcomes and exact counts, including completed work | Retry selects only eligible failed targets after fresh identity validation; completed targets are excluded and retained |
+| `success` | Confirmed service outcome for every selected target, installed/already-present distinction and completion time | Readable result and export; success is unavailable while any target is pending, uncertain, failed or cancelled |
+
+Changing host/port or observed identity invalidates a pending approval. An approval for one endpoint never authorizes another. Review/cancel paths return focus and preserve the user's inputs. Loss of the SSH connection after mutation is an unknown outcome requiring reconciliation, not automatic failure with safe replay. Persist trust only after explicit approval, and read it back before continuing; a trust-store write failure stops the operation with its exact reason.
+
+## Keys workflow detail
+
+| State/action id | Controls and facts | Validation and outcome |
+| --- | --- | --- |
+| `keys.empty` | Generate and Import are equally visible; explain public versus private material | No invented key record |
+| `keys.generate` | Searchable algorithm picker populated from installed SSH service capabilities; algorithm-specific size/curve choices; comment; output folder with native Browse; filename; masked passphrase and confirmation where supported | Recommend Ed25519 only when available; show unavailable algorithms with the service reason. Never offer unsupported sizes/curves or silently change an explicit choice |
+| `keys.output-review` | Exact public and private output paths, destination permissions, existing-file status and selected algorithm | Validate writable destination and filename, protect private material, reject equal/colliding paths, and preserve existing files on all failures. No private value enters history, logs or captures |
+| `keys.overwrite` | Name every existing file that would be replaced; offer Choose another name and Cancel | Never overwrite automatically. Require the native two-key/full-slider destructive confirmation and a recovery-preserving transaction before replacement |
+| `keys.generating` | Real phase/progress, cancellation and no re-entry | Report cancelled only after terminal settlement; atomically promote a validated pair or retain prior files unchanged |
+| `keys.import` | Native public-key file browse and optional paste of public-key text; parsed algorithm, public fingerprint and comment | Validate bytes/encoding/key structure and supported algorithm; reject private-key input, malformed/truncated content and oversize payload. No extension-only trust |
+| `keys.ready` | Public fingerprint, algorithm, source, created/imported provenance and selectable destinations; Export public key, Open folder, Install | Display metadata only; private-key material is never shown. A missing/moved source is explicit, not a valid cached path claim |
+| `keys.invalid` | Preserve safe input and exact validation reason; Choose another file or edit | No partial record, no success toast and no overwrite; retry repeats validation |
+
+Production must define service-backed bounds and supported algorithms from actual capability detection. The handoff intentionally does not invent an algorithm compatibility claim. Bulk actions preview affected public-key records and exclusions; deletion names whether it removes a record, a public file or a private file, and follows the applicable destructive confirmation.
+
+## Results workflow detail
+
+| State/action id | Controls and facts | Required behavior |
+| --- | --- | --- |
+| `results.empty` | No operations yet; Open Connections | No sample success in production |
+| `results.running` | Operation id, account/host/port, public-key fingerprint, real phases, target count, elapsed time and active target | Phases distinguish validation, host identity, authentication, inspection, write and verification; unknown timing/progress stays unknown |
+| `results.cancel` | Cancel beside the initiating operation and same action in its detail | Shared operation owner changes to Cancelling, rejects duplicate submits and waits for terminal settlement |
+| `results.terminal` | Per-target installed, already present, failed, cancelled, skipped or uncertain outcome, exact reason and completion time when known | Aggregate never hides mixed outcomes; completed SSH mutations remain retained after cancellation or partial failure |
+| `results.retry-failed` | Reviewable eligible-failure list, selected count and explicit exclusions | Retry only selected failed targets after fresh validation/trust checks. Do not replay completed targets, changed-host hard stops or uncertain mutations without reconciliation |
+| `results.export` | Current selection versus filtered view, format, encoding, output path with Browse, omitted-sensitive-data disclosure | Export the chosen scope faithfully; exclude credentials/private key data; validate output and offer Open in VS Code with an honest missing-editor state |
+| `results.details` | Searchable sanitized phase records, target-level detail, copy and export | Preserve exact service facts, do not expose secret/environment content, and do not infer success from a process starting |
+
 ## Tool workspaces
 
 **Authenticator:** issuer/account collection; explicit add via URI, image/clipboard QR, camera if available, manual parameters; pairing preview behind explicit reveal; confirm current code before enabling. Current/next code with numeric countdown, copy, reorder/groups and bulk actions; clock/credential-store unavailable state. Secrets never appear in reference data, screenshots, ordinary exports or history. Password-protected history uses encrypted or redacted snapshots with stable identity.
