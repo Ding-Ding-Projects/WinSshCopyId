@@ -31,14 +31,14 @@ function Get-Source {
 }
 function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
   $expected=$Spec.($Algorithm.ToLowerInvariant())
-  if((Test-Path $Destination) -and (Get-FileHash $Destination -Algorithm $Algorithm).Hash -eq $expected) {return}
+  if((Test-Path $Destination) -and (Get-FileHash -LiteralPath $Destination -Algorithm $Algorithm).Hash -eq $expected) {return}
   $temp="$Destination.$PID.$([guid]::NewGuid().ToString('N')).download"
   try {
     Write-Host "Downloading pinned dependency from $($Spec.url)"
     if(Get-Command curl.exe -ErrorAction SilentlyContinue) {
       Invoke-Checked 'curl.exe' @('--fail','--location','--silent','--show-error','--connect-timeout','30','--max-time','900','--output',$temp,$Spec.url)
     } else {Invoke-WebRequest -UseBasicParsing -TimeoutSec 900 -Uri $Spec.url -OutFile $temp}
-    if((Get-FileHash $temp -Algorithm $Algorithm).Hash -ne $expected) {throw "Download digest mismatch: $($Spec.url)"}
+    if((Get-FileHash -LiteralPath $temp -Algorithm $Algorithm).Hash -ne $expected) {throw "Download digest mismatch: $($Spec.url)"}
     Move-Item -LiteralPath $temp -Destination $Destination -Force
   } finally {if(Test-Path $temp) {Remove-Item -LiteralPath $temp -Force}}
 }
@@ -70,7 +70,7 @@ try {
   if($Action -eq 'dependencies') {exit 0}
   $buildLock=[IO.File]::Open((Join-Path $tools 'producer.lock'),'OpenOrCreate','ReadWrite','None')
   $source=Get-Source
-  $manifestHash=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash
+  $manifestHash=(Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash
   $publish=Resolve-Output $m.publishDirectory @('artifacts/publish')
   $version=$m.version
   if($env:BUILD_VERSION) {$version=$env:BUILD_VERSION}
@@ -94,7 +94,7 @@ try {
   New-Item -ItemType Directory -Force $worker | Out-Null
   Invoke-Checked $dotnet @('publish',$m.worker.project,'-c','Release','-r',$m.runtime,'--self-contained','true',"-p:Version=$version",'-o',$worker)
   foreach($name in @($m.worker.executable,'coreclr.dll','hostfxr.dll')) {if(!(Test-Path -LiteralPath (Join-Path $worker $name) -PathType Leaf)) {throw "Worker payload missing: $name"}}
-  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
   @{sourceCommit=$source;runtime=$m.runtime;members=$workerMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.worker.manifest)
   $gitPayload=Assert-Contained (Join-Path $publish $m.mingit.directory) $publish
   New-Item -ItemType Directory -Force $gitPayload | Out-Null
@@ -102,18 +102,18 @@ try {
   if(!(Test-Tree $gitPayload (Join-Path $tools 'mingit.zip') -Diagnose -OwnerRoot $publish)) {throw 'Bundled MinGit differs from its pinned archive.'}
   if(!(Test-Path -LiteralPath (Join-Path $gitPayload $m.mingit.license))) {throw 'Bundled MinGit license is missing.'}
   Invoke-Checked (Join-Path $gitPayload $m.mingit.executable) @('--version')
-  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
   @{sourceCommit=$source;runtime=$m.runtime;version=$m.mingit.version;executable=$m.mingit.executable;license=$m.mingit.license;sourceUrl=$m.mingit.sourceUrl;archiveSha256=$m.mingit.sha256;members=$gitMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.mingit.manifest)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
   $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
   Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
-  $updaterHash=(Get-FileHash $updaterSource -Algorithm SHA256).Hash
-  if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
+  $updaterHash=(Get-FileHash -LiteralPath $updaterSource -Algorithm SHA256).Hash
+  if((Get-FileHash -LiteralPath (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   @{sourceCommit=$source;version=$version;builtAtUtc=$buildStartedUtc;runtime=$m.runtime;manifestSha256=$manifestHash} | ConvertTo-Json | Set-Content (Join-Path $publish 'build-info.json')
-  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
-  if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
+  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
+  if((Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
   $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
@@ -132,8 +132,8 @@ try {
     }
     $setup=Join-Path $releases 'Setup.exe'
     if((Get-AuthenticodeSignature $setup).Status -ne 'NotSigned') {throw 'Expected an unsigned Squirrel setup executable.'}
-    if((Get-Source) -ne $source -or (Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Source or manifest changed during packaging.'}
-    $assets=@(Get-ChildItem $releases -File | ForEach-Object { @{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash} })
+    if((Get-Source) -ne $source -or (Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Source or manifest changed during packaging.'}
+    $assets=@(Get-ChildItem $releases -File | ForEach-Object { @{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash} })
     @{schemaVersion=1;sourceCommit=$source;version=$version;manifestSha256=$manifestHash;unsigned=$true;assets=$assets} | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/installer-receipt.json'
     $assets | ForEach-Object {Write-Host "$($_.name) $($_.bytes) bytes SHA256 $($_.sha256)"}
     Write-Host 'Genuine unsigned Squirrel.Windows installer produced. Installation and runtime verification are separate.'
@@ -142,6 +142,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 

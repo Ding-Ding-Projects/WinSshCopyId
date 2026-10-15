@@ -14,7 +14,7 @@ function Resolve-Output([string]$Relative,[string[]]$Allowed) {
 }
 $script:zipInventories=@{}
 function Get-ArchiveInventory([string]$Zip) {
-  $digest=(Get-FileHash $Zip -Algorithm SHA256).Hash
+  $digest=(Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash
   if($script:zipInventories.ContainsKey($digest)) {return $script:zipInventories[$digest]}
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $archive=[IO.Compression.ZipFile]::OpenRead($Zip)
@@ -35,28 +35,39 @@ function Get-ArchiveInventory([string]$Zip) {
 }
 function Test-Tree([string]$Directory,[string]$Zip,[switch]$Diagnose,[string]$OwnerRoot=$tools) {
   if(!(Test-Path -LiteralPath $Directory -PathType Container)) {if($Diagnose){Write-Host 'Inventory mismatch: extraction directory is missing.'};return $false}
+  $phase='containment';$logicalMember='none'
   try {
     $null=Assert-Contained $Directory $OwnerRoot
-    $expected=@(Get-ArchiveInventory $Zip)
-    $actual=@(Get-ChildItem -LiteralPath $Directory -Recurse -File -Force)
+    $phase='archive-inventory';$expected=@(Get-ArchiveInventory $Zip)
+    $phase='disk-inventory';$actual=@(Get-ChildItem -LiteralPath $Directory -Recurse -File -Force)
     $valid=$true
     $members=@{}
     foreach($item in $actual) {$members[$item.FullName.Substring($Directory.TrimEnd('\').Length+1).Replace('/','\')]=$item}
     $expectedNames=@{}
     foreach($entry in $expected) {
+      $phase='member-path';$logicalMember=if($entry -is [Collections.IDictionary] -and $entry.Contains('path')) {$entry['path']} else {'unknown'}
       $path=Assert-Contained (Join-Path $Directory $entry.path) $Directory
       $relative=$path.Substring($Directory.TrimEnd('\').Length+1).Replace('/','\')
       if($expectedNames.ContainsKey($relative)) {throw 'Archive contains duplicate logical member paths.'}
       $expectedNames[$relative]=$true
       if(!$members.ContainsKey($relative)) {$valid=$false;if($Diagnose){Write-Host "Inventory missing member: $relative"};continue}
-      $item=Get-Item -LiteralPath $path -Force
+      $phase='member-metadata';$item=Get-Item -LiteralPath $path -Force
       if($item.Length -ne $entry.bytes) {$valid=$false;if($Diagnose){Write-Host "Inventory length mismatch: $relative expected=$($entry.bytes) actual=$($item.Length)"};continue}
-      if((Get-FileHash $path -Algorithm SHA256).Hash -ne $entry.sha256) {$valid=$false;if($Diagnose){Write-Host "Inventory hash mismatch: $relative"}}
+      $phase='member-hash'
+      if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $entry.sha256) {$valid=$false;if($Diagnose){Write-Host "Inventory hash mismatch: $relative"}}
     }
     foreach($relative in $members.Keys) {if(!$expectedNames.ContainsKey($relative)) {$valid=$false;if($Diagnose){Write-Host "Inventory extra member: $relative"}}}
     if($actual.Count -ne $expected.Count) {$valid=$false;if($Diagnose){Write-Host "Inventory member count: expected=$($expected.Count) actual=$($actual.Count)"}}
     return $valid
-  } catch {if($Diagnose){Write-Host "Inventory inspection failed: $($_.Exception.GetType().Name)"};return $false}
+  } catch {
+    if($Diagnose) {
+      $property='unknown'
+      if($_.Exception.Message -match "property '([A-Za-z0-9_.]{1,80})'") {$property=$Matches[1]}
+      $line=$_.InvocationInfo.ScriptLineNumber
+      Write-Host "Inventory inspection failed: $($_.Exception.GetType().Name) phase=$phase property=$property line=$line member=$logicalMember"
+    }
+    return $false
+  }
 }
 function Write-Journal([string]$Path,$State) {
   $temp=Assert-Contained "$Path.$PID.tmp" $tools
@@ -71,7 +82,7 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
     $validJournal=$false
     try {
       $state=Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json
-      $validJournal=($state.active -eq $Directory -and $state.backup -eq $backup -and $state.archiveSha256 -eq (Get-FileHash $Zip -Algorithm SHA256).Hash -and $state.phase -in @('staged','backed-up','activated'))
+      $validJournal=($state.active -eq $Directory -and $state.backup -eq $backup -and $state.archiveSha256 -eq (Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash -and $state.phase -in @('staged','backed-up','activated'))
     } catch {}
     if(!(Test-Tree $Directory $Zip)) {
       if(Test-Tree $backup $Zip) {
@@ -86,7 +97,7 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
   $null=Get-ArchiveInventory $Zip
   Expand-Archive -LiteralPath $Zip -DestinationPath $stage
   if(!(Test-Path (Join-Path $stage $Required)) -or !(Test-Tree $stage $Zip -Diagnose)) {throw 'Extracted dependency verification failed.'}
-  $state=@{active=$Directory;backup=$backup;stage=$stage;archiveSha256=(Get-FileHash $Zip -Algorithm SHA256).Hash;phase='staged'}
+  $state=@{active=$Directory;backup=$backup;stage=$stage;archiveSha256=(Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash;phase='staged'}
   Write-Journal $journal $state
   if(Test-Path -LiteralPath $backup) {Move-Item -LiteralPath $backup -Destination (Assert-Contained "$backup.retained.$([guid]::NewGuid().ToString('N'))" $tools)}
   if(Test-Path -LiteralPath $Directory) {Move-Item -LiteralPath $Directory -Destination $backup}
@@ -104,5 +115,7 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
     throw
   }
 }
+
+
 
 

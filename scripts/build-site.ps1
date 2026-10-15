@@ -26,5 +26,6 @@ Write-Host "Website build using verified Node.js $nodeVersion."
 Invoke-Checked $node @($siteScript)
 if((Get-Source) -ne $source) {throw 'Source changed during website build.'}
 New-Item -ItemType Directory -Force (Join-Path $root 'artifacts') | Out-Null
-@{sourceCommit=$source;nodeVersion=$nodeVersion;manifestSha256=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash;builtAtUtc=[DateTime]::UtcNow.ToString('o');command='build.bat --site'} | ConvertTo-Json | Set-Content (Join-Path $root 'artifacts/site-build-receipt.json')
+@{sourceCommit=$source;nodeVersion=$nodeVersion;manifestSha256=(Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash;builtAtUtc=[DateTime]::UtcNow.ToString('o');command='build.bat --site'} | ConvertTo-Json | Set-Content (Join-Path $root 'artifacts/site-build-receipt.json')
+
 

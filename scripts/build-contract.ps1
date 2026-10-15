@@ -12,6 +12,7 @@ New-Item -ItemType Directory -Force $tools | Out-Null
 $tools=Join-Path $tools ([guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force (Join-Path $tools 'input') | Out-Null
 'valid' | Set-Content (Join-Path $tools 'input/tool.exe')
+'bracketed' | Set-Content -LiteralPath (Join-Path $tools 'input/[Content_Types].xml')
 $zip=Join-Path $tools 'tool.zip';$active=Join-Path $tools 'active'
 Compress-Archive (Join-Path $tools 'input/*') $zip
 Expand-Verified $zip $active tool.exe
@@ -32,7 +33,7 @@ Expand-Verified $zip $active tool.exe
 if(!(Test-Tree $active $zip)) {throw 'Malformed journal lost verified active tree.'}
 if(Test-Path "$active.previous") {Move-Item "$active.previous" "$active.retained.$([guid]::NewGuid().ToString('N'))"}
 Move-Item $active "$active.previous"
-Write-Journal "$active.activation.json" @{active=$active;backup="$active.previous";archiveSha256=(Get-FileHash $zip).Hash;phase='backed-up'}
+Write-Journal "$active.activation.json" @{active=$active;backup="$active.previous";archiveSha256=(Get-FileHash -LiteralPath $zip).Hash;phase='backed-up'}
 Expand-Verified $zip $active tool.exe
 if(!(Test-Tree $active $zip)) {throw 'Interrupted activation recovery failed.'}
 try {$null=Assert-Contained (Join-Path $tools '../outside') $tools;throw 'Escape accepted.'} catch {if($_.Exception.Message -eq 'Escape accepted.') {throw}}
@@ -42,7 +43,7 @@ try {try {$other=[IO.File]::Open((Join-Path $tools 'fixture.lock'),'OpenOrCreate
 $m=[pscustomobject]@{publishDirectory='artifacts/publish';executable='tool.exe';project='fixture.csproj';requiredPayload=@('tool.exe')}
 Copy-Item (Join-Path $active 'tool.exe') (Join-Path $active 'Update.exe')
 $receiptPath=Join-Path $tools 'receipt.json'
-$receipt=@{schemaVersion=1;sourceCommit='source';manifestSha256='manifest';version='1.2.3';runtime='win-x64';sourceTree='tree';indexTree='index';command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=(Get-FileHash (Join-Path $active 'Update.exe')).Hash;files=@(Get-ChildItem $active -File -Force | ForEach-Object {@{path=$_.Name;bytes=$_.Length;sha256=(Get-FileHash $_.FullName).Hash}})}
+$receipt=@{schemaVersion=1;sourceCommit='source';manifestSha256='manifest';version='1.2.3';runtime='win-x64';sourceTree='tree';indexTree='index';command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=(Get-FileHash -LiteralPath (Join-Path $active 'Update.exe')).Hash;files=@(Get-ChildItem $active -File -Force | ForEach-Object {@{path=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash}})}
 $receipt | ConvertTo-Json -Depth 6 | Set-Content $receiptPath
 if(!(Test-BuildReceipt $receiptPath $active source manifest 1.2.3 win-x64 tree index)) {throw 'Valid build receipt rejected.'}
 if(Test-BuildReceipt $receiptPath $active changed manifest 1.2.3 win-x64 tree index) {throw 'Changed source accepted.'}
@@ -54,3 +55,5 @@ Copy-Item (Join-Path $active 'tool.exe') (Join-Path $active 'Update.exe') -Force
 'extra' | Set-Content (Join-Path $active 'extra.exe')
 if(Test-BuildReceipt $receiptPath $active source manifest 1.2.3 win-x64 tree index) {throw 'Extra payload accepted.'}
 Write-Output 'PASS: extraction, hidden members, extra/tampered files, recovery, containment, locks, valid receipt, changed source/manifest/version and tampered/extra payload rejection'
+
+

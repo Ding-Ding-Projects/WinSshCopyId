@@ -11,11 +11,12 @@ function Test-BuildReceipt([string]$ReceiptPath,[string]$Publish,[string]$Source
       $path=Assert-Contained (Join-Path $Publish $file.path) $Publish
       if($seen.ContainsKey($path)) {return $false};$seen[$path]=$true
       if(!(Test-Path -LiteralPath $path -PathType Leaf)) {return $false}
-      if((Get-Item -LiteralPath $path -Force).Length -ne $file.bytes -or (Get-FileHash $path -Algorithm SHA256).Hash -ne $file.sha256) {return $false}
+      if((Get-Item -LiteralPath $path -Force).Length -ne $file.bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $file.sha256) {return $false}
     }
     foreach($file in $actual) {if(!$seen.ContainsKey($file.FullName)) {return $false}}
     foreach($name in $m.requiredPayload) {if(!(Test-Path -LiteralPath (Join-Path $Publish $name) -PathType Leaf)) {return $false}}
-    if((Get-FileHash (Join-Path $Publish 'Update.exe') -Algorithm SHA256).Hash -ne $receipt.updaterSha256) {return $false}
+    if((Get-FileHash -LiteralPath (Join-Path $Publish 'Update.exe') -Algorithm SHA256).Hash -ne $receipt.updaterSha256) {return $false}
     return $true
   } catch {return $false}
 }
+
