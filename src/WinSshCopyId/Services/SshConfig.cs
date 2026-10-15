@@ -40,6 +40,11 @@ public static class SshConfig
     public static bool AddHostEntry(
         string alias, string hostName, string user, int port, string? identityFile)
     {
+        SshInput.ValidateEndpoint(hostName, port);
+        SshInput.ValidateUser(user);
+        if (string.IsNullOrWhiteSpace(alias) || !System.Text.RegularExpressions.Regex.IsMatch(alias, @"\A[A-Za-z0-9_][A-Za-z0-9_.-]*\z"))
+            throw new ArgumentException("Invalid SSH alias.", nameof(alias));
+        string? quotedIdentity = string.IsNullOrWhiteSpace(identityFile) ? null : SshInput.QuoteConfig(identityFile);
         Directory.CreateDirectory(KeyManager.SshDir);
         if (AliasExists(alias))
         {
@@ -66,7 +71,7 @@ public static class SshConfig
         }
         if (!string.IsNullOrWhiteSpace(identityFile))
         {
-            sb.Append($"    IdentityFile {identityFile}\n");
+            sb.Append($"    IdentityFile {quotedIdentity}\n");
         }
 
         File.AppendAllText(ConfigPath, sb.ToString(), new UTF8Encoding(false));
