@@ -123,14 +123,25 @@ public static class AppContainerWorker
         finally
         {
             // Closing a kill-on-close job kills only this launch. Wait for the exact process before freeing its profile.
+            Exception? teardownFailure = null;
             if (job != IntPtr.Zero) CloseHandle(job);
-            if (process.hProcess != IntPtr.Zero) { TerminateProcess(process.hProcess, 125); WaitForSingleObject(process.hProcess, 10000); CloseHandle(process.hProcess); }
+            if (process.hProcess != IntPtr.Zero)
+            {
+                TerminateProcess(process.hProcess, 125);
+                if (WaitForSingleObject(process.hProcess, 10000) != 0) teardownFailure = new IOException("Confined worker termination was not confirmed.");
+                CloseHandle(process.hProcess);
+            }
             if (process.hThread != IntPtr.Zero) CloseHandle(process.hThread);
             if (attributes != IntPtr.Zero) { DeleteProcThreadAttributeList(attributes); Marshal.FreeHGlobal(attributes); }
             if (capabilities != IntPtr.Zero) Marshal.FreeHGlobal(capabilities);
             if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
             if (sid != IntPtr.Zero) FreeSid(sid);
-            if (createdProfile) DeleteAppContainerProfile(profile);
+            if (createdProfile)
+            {
+                var removal = DeleteAppContainerProfile(profile);
+                if (removal < 0) teardownFailure = new IOException("Confined profile removal was not confirmed.", Marshal.GetExceptionForHR(removal));
+            }
+            if (teardownFailure is not null) throw teardownFailure;
         }
     }
 
