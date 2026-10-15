@@ -52,7 +52,7 @@ public static class AppContainerWorker
         if (!request.PackageMemberSha256.TryGetValue("WinSshCopyId.ToolWorker.exe", out var executableHash))
             throw new InvalidDataException("Worker executable is not in the package manifest.");
         var profile = "WinSshCopyId.Conversion." + Guid.NewGuid().ToString("N");
-        IntPtr sid = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero, job = IntPtr.Zero;
+        IntPtr sid = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero, job = IntPtr.Zero, environment = IntPtr.Zero;
         PROCESS_INFORMATION process = default;
         bool createdProfile = false;
         try
@@ -97,9 +97,15 @@ public static class AppContainerWorker
                 ProcessMemoryLimit = (UIntPtr)(256UL * 1024 * 1024)
             };
             Check(SetInformationJobObject(job, 9, ref limits, (uint)Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>()));
+            // Do not inherit credentials or unrelated runtime configuration through the parent's environment.
+            var systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            if (string.IsNullOrEmpty(systemRoot)) throw new IOException("Windows directory is unavailable.");
+            environment = Marshal.StringToHGlobalUni(string.Join('\0', new[] {
+                "DOTNET_EnableDiagnostics=0", "DOTNET_MULTILEVEL_LOOKUP=0", "SystemRoot=" + systemRoot,
+                "TEMP=" + outputDirectory, "TMP=" + outputDirectory, "WINDIR=" + systemRoot }) + "\0\0");
             var command = new StringBuilder(Quote(executable) + " --verify-managed " + Quote(request.AdapterId) + " " + Quote(input) + " " + Quote(output));
-            Check(CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, false, 0x80000 | 0x4 | 0x08000000,
-                IntPtr.Zero, package, ref startup, out process));
+            Check(CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, false, 0x80000 | 0x4 | 0x08000000 | 0x400,
+                environment, package, ref startup, out process));
             Check(AssignProcessToJobObject(job, process.hProcess));
             Check(ResumeThread(process.hThread) != uint.MaxValue);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -122,6 +128,7 @@ public static class AppContainerWorker
             if (process.hThread != IntPtr.Zero) CloseHandle(process.hThread);
             if (attributes != IntPtr.Zero) { DeleteProcThreadAttributeList(attributes); Marshal.FreeHGlobal(attributes); }
             if (capabilities != IntPtr.Zero) Marshal.FreeHGlobal(capabilities);
+            if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
             if (sid != IntPtr.Zero) FreeSid(sid);
             if (createdProfile) DeleteAppContainerProfile(profile);
         }
