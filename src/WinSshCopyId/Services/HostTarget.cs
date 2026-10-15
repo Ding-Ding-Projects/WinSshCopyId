@@ -18,6 +18,7 @@ public sealed class HostTarget
     /// </summary>
     public static IReadOnlyList<HostTarget> ParseList(string text, int defaultPort)
     {
+        if (defaultPort is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(defaultPort));
         var list = new List<HostTarget>();
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -34,6 +35,7 @@ public sealed class HostTarget
             HostTarget? target = ParseLine(line, defaultPort);
             if (target is not null)
             {
+                SshInput.ValidateEndpoint(target.Host, target.Port);
                 list.Add(target);
             }
         }
@@ -51,19 +53,22 @@ public sealed class HostTarget
             int close = line.IndexOf(']');
             if (close <= 1)
             {
-                return null;
+                throw new FormatException("Invalid bracketed host.");
             }
             host = line[1..close];
             string rest = line[(close + 1)..].Trim();
             if (rest.StartsWith(':'))
             {
-                _ = int.TryParse(rest[1..].Trim(), out port);
+                if (!int.TryParse(rest[1..].Trim(), out port)) throw new FormatException("Invalid SSH port.");
             }
+            else if (rest.Length != 0) throw new FormatException("Unexpected host suffix.");
         }
         else
         {
             // Split off an optional "port" written after whitespace.
             string[] tokens = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length > 2) throw new FormatException("Unexpected host fields.");
+            if (tokens.Length == 2 && !int.TryParse(tokens[1], out _)) throw new FormatException("Invalid SSH port.");
             string first = tokens[0];
             if (tokens.Length >= 2 && int.TryParse(tokens[1], out int spacePort))
             {
@@ -81,7 +86,7 @@ public sealed class HostTarget
                 }
                 else
                 {
-                    host = first;
+                    throw new FormatException("Invalid SSH port.");
                 }
             }
             else
@@ -93,7 +98,7 @@ public sealed class HostTarget
 
         if (port is < 1 or > 65535)
         {
-            port = defaultPort;
+            throw new FormatException("SSH port must be between 1 and 65535.");
         }
         return host.Length == 0 ? null : new HostTarget { Host = host, Port = port };
     }

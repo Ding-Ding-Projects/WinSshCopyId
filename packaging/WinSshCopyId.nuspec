@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>WinSshCopyId</id>
+    <version>$version$</version>
+    <title>WinSshCopyId</title>
+    <authors>Ding-Ding-Projects</authors>
+    <owners>Ding-Ding-Projects</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Native Windows SSH public key deployment utility.</description>
+    <copyright>Copyright Ding-Ding-Projects contributors</copyright>
+  </metadata>
+  <files><file src="$payload$\**\*" target="lib\net45" /></files>
+</package>

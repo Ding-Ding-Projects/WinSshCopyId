@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "product": "WinSshCopyId",
+  "version": "1.0.0",
+  "project": "src/WinSshCopyId/WinSshCopyId.csproj",
+  "runtime": "win-x64",
+  "platform": "x64",
+  "framework": "net8.0-windows10.0.19041.0",
+  "executable": "WinSshCopyId.exe",
+  "publishDirectory": "artifacts/publish",
+  "releaseDirectory": "artifacts/releases",
+  "updateFeed": "https://github.com/Ding-Ding-Projects/WinSshCopyId/releases/latest/download",
+  "sdk": {
+    "version": "8.0.426",
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-win-x64.zip",
+    "sha512": "10261657109f1c62126f106a9ac966739b025b5f6b4a9f88ab7c6e73cacce9aec771895daa3267b8da933a83c32ee91bf458dc6704e1ddcd9bcf0d5edd036abb"
+  },
+  "nuget": {
+    "version": "6.14.0",
+    "url": "https://dist.nuget.org/win-x86-commandline/v6.14.0/nuget.exe",
+    "sha256": "92DBED160DDEE0F64B901E907439E021211B428E57C089ECC12FC38DCC4BD9A5"
+  },
+  "squirrel": {
+    "version": "2.0.1",
+    "url": "https://api.nuget.org/v3-flatcontainer/squirrel.windows/2.0.1/squirrel.windows.2.0.1.nupkg",
+    "sha256": "923E18ABB4FD50B5A4878A39DBCD042ED3F7EB68FC0F82C0955CD5380C921AC7"
+  },
+  "requiredPayload": ["WinSshCopyId.exe", "WinSshCopyId.dll", "WinSshCopyId.runtimeconfig.json", "Microsoft.UI.Xaml.dll", "Microsoft.WindowsAppRuntime.dll", "coreclr.dll", "hostfxr.dll"]
+}
