@@ -34,3 +34,13 @@ Screens above: 1440x900 and 320x740; English, Cantonese, bilingual; light/dark; 
 ## Asset provenance
 
 Use only the reviewed project vector mark or a typographic title. No fabricated screenshots, remote fonts, remote imagery, analytics or CDN runtime assets. The design document is public-bound source and contains no local machine paths.
+
+## Independent review corrections
+
+The independent design review of d4846d4 accepted the purpose, palette, boundaries and responsive direction, with three required corrections recorded here before implementation:
+
+1. Desktop navigation defaults to left-docked tabs. Support left/right/top/bottom docking, groups, pins, reordering and overflow; persist that state per visitor. Keep four independent tab discovery searches. At 320px use a bounded compact drawer with focus restoration. A basic route navigation foundation remains partial until these operations work.
+2. Every scoped search owns a full regex workbench, including engine/dialect capabilities, guided construction, captures, replacements, snippets/test cases, bounded worker evaluation and cancellation. Unsupported engine features are disclosed. Per-element appearance/locks, visible accessibility access, narration and schedules have explicit ledger rows. No reduced editor is called full coverage.
+3. The generated content inventory maps every source document to its article route and heading anchors. Missing content is an acceptance error. Installer evidence requires schema version, version, exact source commit, immutable tag, published timestamp, platform, verification state and installer name, byte count, SHA-256 and immutable URL. Missing or invalid proof suppresses the download control.
+
+All advanced interactions and evidence absent from the first foundation remain explicit incomplete ledger entries. Independent review does not establish runtime or component conformance.
