@@ -1,7 +1,7 @@
 // Bounded strict JSON reader, including duplicate-key rejection before object creation.
 export function parseStrictJson(text){
  if(new TextEncoder().encode(text).length>262144)throw Error('File exceeds 256 KiB.');
- let i=0;const ws=()=>{while(/\s/.test(text[i]??'')&&i<text.length)i++;};
+ let i=0;const ws=()=>{while(/[\t\n\r ]/.test(text[i]??'')&&i<text.length)i++;};
  function value(depth){
   ws();if(depth>8)throw Error('Maximum nesting depth exceeded.');
   if(text[i]==='"')return string();
@@ -48,3 +48,4 @@ export function renderMarkdown(doc,documents){
  }
  flush();if(code!==null)output+=`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`;return output;
 }
+

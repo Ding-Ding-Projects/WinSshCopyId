@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -25,6 +26,9 @@ export function validateRelease(value){
  return value;
 }
 export function build(){
+ const vendor=JSON.parse(fs.readFileSync(path.join(root,'site/vendor/manifest.json'),'utf8'));
+ const actual=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'site/vendor/material.js'))).digest('hex');
+ if(vendor.package!=='@material/web'||vendor.version!=='2.5.0'||actual!==vendor.sha256)throw Error('Bundled component identity or SHA-256 mismatch.');
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'build/manifest.json'),'utf8').replace(/^\uFEFF/,''));
  const documents=collectDocuments();
  const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
@@ -44,4 +48,5 @@ export function build(){
  return data;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))build();
+
 
