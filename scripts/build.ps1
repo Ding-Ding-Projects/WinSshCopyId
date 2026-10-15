@@ -1,6 +1,12 @@
 param([Parameter(Mandatory=$true)][ValidateSet('build','installer','dependencies')][string]$Action,[Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
+$ProgressPreference='SilentlyContinue'
+function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
+  $stream=[IO.File]::OpenRead($LiteralPath)
+  $digest=[Security.Cryptography.HashAlgorithm]::Create($Algorithm)
+  try {return [pscustomobject]@{Hash=([BitConverter]::ToString($digest.ComputeHash($stream))).Replace('-','');Path=$LiteralPath}} finally {$stream.Dispose();$digest.Dispose()}
+}
 $root=Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $m=Get-Content (Join-Path $root 'build/manifest.json') -Raw | ConvertFrom-Json
@@ -26,46 +32,19 @@ function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
   $temp="$Destination.$PID.$([guid]::NewGuid().ToString('N')).download"
   try {
     Write-Host "Downloading pinned dependency from $($Spec.url)"
-    Invoke-WebRequest -UseBasicParsing -Uri $Spec.url -OutFile $temp
+    if(Get-Command curl.exe -ErrorAction SilentlyContinue) {
+      Invoke-Checked 'curl.exe' @('--fail','--location','--silent','--show-error','--connect-timeout','30','--max-time','900','--output',$temp,$Spec.url)
+    } else {Invoke-WebRequest -UseBasicParsing -TimeoutSec 900 -Uri $Spec.url -OutFile $temp}
     if((Get-FileHash $temp -Algorithm $Algorithm).Hash -ne $expected) {throw "Download digest mismatch: $($Spec.url)"}
     Move-Item -LiteralPath $temp -Destination $Destination -Force
   } finally {if(Test-Path $temp) {Remove-Item -LiteralPath $temp -Force}}
 }
-function Test-Tree([string]$Directory) {
-  $inventory=Join-Path $Directory '.files.json'
-  if(!(Test-Path $inventory)) {return $false}
-  try {
-    $files=Get-Content $inventory -Raw | ConvertFrom-Json
-    if(@($files).Count -lt 1) {return $false}
-    foreach($file in $files) {
-      $path=Join-Path $Directory $file.path
-      if(!(Test-Path $path -PathType Leaf) -or (Get-FileHash $path -Algorithm SHA256).Hash -ne $file.sha256) {return $false}
-    }
-    return $true
-  } catch {return $false}
-}
-function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
-  $backup="$Directory.previous"
-  if(!(Test-Tree $Directory) -and (Test-Tree $backup)) {
-    if(Test-Path $Directory) {Move-Item $Directory "$Directory.invalid.$([guid]::NewGuid().ToString('N'))"}
-    Move-Item $backup $Directory
-  }
-  if(Test-Tree $Directory) {return}
-  $stage="$Directory.stage.$PID.$([guid]::NewGuid().ToString('N'))"
-  Expand-Archive -LiteralPath $Zip -DestinationPath $stage
-  if(!(Test-Path (Join-Path $stage $Required))) {throw "Dependency archive lacks $Required"}
-  $files=@(Get-ChildItem $stage -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($stage.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash} })
-  $files | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $stage '.files.json')
-  if(!(Test-Tree $stage)) {throw 'Extracted dependency verification failed.'}
-  if(Test-Path $backup) {Remove-Item -LiteralPath $backup -Recurse -Force}
-  if(Test-Path $Directory) {Move-Item $Directory $backup}
-  try {Move-Item $stage $Directory} catch {if(Test-Path $backup) {Move-Item $backup $Directory};throw}
-}
+. (Join-Path $PSScriptRoot 'bootstrap.ps1')
 try {
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
   Write-Host 'Using project-local portable tooling; administrator rights are not required.'
-  $tools=Join-Path $root '.tools'; New-Item -ItemType Directory -Force $tools | Out-Null
+  $tools=Assert-Contained (Join-Path $root '.tools') $root; New-Item -ItemType Directory -Force $tools | Out-Null
   $lock=[IO.File]::Open((Join-Path $tools 'bootstrap.lock'),'OpenOrCreate','ReadWrite','None')
   try {
     Get-VerifiedDownload $m.sdk (Join-Path $tools 'sdk.zip') SHA512
@@ -80,9 +59,10 @@ try {
   $sdk=(& $dotnet --version).Trim(); if($sdk -ne $m.sdk.version) {throw "Expected SDK $($m.sdk.version), found $sdk"}
   Write-Host "Verified portable SDK $sdk and packaging tools. Elapsed: $($timer.Elapsed)"
   if($Action -eq 'dependencies') {exit 0}
+  $buildLock=[IO.File]::Open((Join-Path $tools 'producer.lock'),'OpenOrCreate','ReadWrite','None')
   $source=Get-Source
   $manifestHash=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash
-  $publish=Join-Path $root $m.publishDirectory
+  $publish=Resolve-Output $m.publishDirectory @('artifacts/publish')
   if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
   New-Item -ItemType Directory -Force $publish | Out-Null
   $version=$m.version
@@ -94,16 +74,17 @@ try {
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   $payload=@(Get-ChildItem $publish -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
-  $receipt=@{schemaVersion=1;sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
+  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
   if($Action -eq 'installer') {
-    $releases=Join-Path $root $m.releaseDirectory
+    $releases=Resolve-Output $m.releaseDirectory @('artifacts/releases')
     if(Test-Path $releases) {Remove-Item -LiteralPath $releases -Recurse -Force}
     New-Item -ItemType Directory -Force $releases | Out-Null
-    $packages=Join-Path $root 'artifacts/packages'; New-Item -ItemType Directory -Force $packages | Out-Null
+    $packages=Resolve-Output 'artifacts/packages' @('artifacts/packages'); New-Item -ItemType Directory -Force $packages | Out-Null
     Invoke-Checked (Join-Path $tools 'nuget.exe') @('pack','packaging/WinSshCopyId.nuspec','-Version',$version,'-Properties',"payload=$publish",'-OutputDirectory',$packages,'-NoDefaultExcludes','-NonInteractive')
-    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.exe') @('--releasify',(Join-Path $packages "WinSshCopyId.$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
+    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.com') @('--releasify',(Join-Path $packages "WinSshCopyId.$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
     foreach($name in @('Setup.exe','RELEASES',"WinSshCopyId-$version-full.nupkg")) {
       $path=Join-Path $releases $name
       if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Missing installer output: $name"}
@@ -119,5 +100,7 @@ try {
   if(!$silent -and !$run -and $Action -eq 'build') {$run=(Read-Host 'Run the built application? [y/N]') -eq 'y'}
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
-} catch {Write-Error $_; exit 1}
+} catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
+
 

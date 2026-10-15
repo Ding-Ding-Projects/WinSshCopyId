@@ -26,12 +26,11 @@ jobs:
       - name: Package unsigned Squirrel installer
         shell: cmd
         run: build-installer.bat /s
-      - name: Publish verified normal release from main
-        if: github.ref == 'refs/heads/main'
+      - name: Publish verified normal release
         shell: powershell
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
-        run: ./scripts/release.ps1 -SourceCommit '${{ github.sha }}' -Repository '${{ github.repository }}' -RunId '${{ github.run_id }}' -RunAttempt '${{ github.run_attempt }}'
+        run: ./scripts/release.ps1 -SourceCommit '${{ github.sha }}' -Repository '${{ github.repository }}' -RunId '${{ github.run_id }}' -RunAttempt '${{ github.run_attempt }}' -Stable:('${{ github.ref }}' -eq 'refs/heads/main')
       - name: Collect safe build evidence
         if: ${{ always() }}
         continue-on-error: true
@@ -55,3 +54,4 @@ jobs:
             artifacts/evidence/*.json
           if-no-files-found: warn
           retention-days: 7
+
