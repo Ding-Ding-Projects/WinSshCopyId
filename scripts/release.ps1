@@ -6,11 +6,12 @@ function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
   $stream=[IO.File]::OpenRead($LiteralPath);$digest=[Security.Cryptography.HashAlgorithm]::Create($Algorithm)
   try {[pscustomobject]@{Hash=([BitConverter]::ToString($digest.ComputeHash($stream))).Replace('-','')}} finally {$stream.Dispose();$digest.Dispose()}
 }
-function Invoke-Gh([string[]]$Arguments) { $result=& gh @Arguments; if($LASTEXITCODE -ne 0) {throw "GitHub CLI failed: $($Arguments[0])"}; return $result }
+. (Join-Path $PSScriptRoot 'release-cli.ps1')
+$script:ReleaseGhExecutable=(Get-Command gh -CommandType Application -ErrorAction Stop).Source
 if($SourceCommit -notmatch '^[a-f0-9]{40}$' -or $RunId -notmatch '^\d+$' -or $RunAttempt -notmatch '^\d+$') {throw 'Invalid exact source or run identity.'}
 if((& git rev-parse HEAD).Trim() -ne $SourceCommit -or @(& git status --porcelain).Count -ne 0) {throw 'Publisher requires unchanged exact source.'}
-& git fetch origin main --no-tags
-if($LASTEXITCODE -ne 0) {throw 'Cannot verify main lineage.'}
+$fetch=Invoke-ReleaseProcess (Get-Command git -CommandType Application).Source @('fetch','origin','main','--no-tags')
+if($fetch.ExitCode -ne 0) {throw 'Cannot verify main lineage.'}
 $mainBase=(& git merge-base $SourceCommit origin/main).Trim()
 if($LASTEXITCODE -ne 0 -or !$mainBase) {throw 'Cannot prove candidate main lineage.'}
 & git merge-base --is-ancestor $mainBase $SourceCommit
@@ -27,8 +28,7 @@ foreach($asset in $receipt.assets) {
 }
 if($assets.Count -ne 3) {throw 'Expected exactly three Squirrel release assets.'}
 $tag="v$($receipt.version)-run.$RunId.$RunAttempt"
-$existing=& gh release view $tag --repo $Repository --json tagName 2>$null
-if($LASTEXITCODE -eq 0) {throw 'Immutable release tag already exists; no overwrite is permitted.'}
+Assert-ReleaseAbsent $tag $Repository
 $body="Native Windows x64 build from commit $SourceCommit.`n`nUnsigned Squirrel.Windows installer. Windows may show an unknown publisher warning.`n`nBuild and packaging completed. Installation, GUI behavior, update, rollback, and fresh-environment acceptance remain separate verification obligations."
 $notes=Join-Path 'artifacts' 'release-notes.md'; [IO.File]::WriteAllText((Join-Path (Get-Location) $notes),$body)
 $latest=if($Stable) {'--latest=true'} else {'--latest=false'}
@@ -53,6 +53,7 @@ Invoke-Gh @('release','download',$tag,'--repo',$Repository,'--dir',$verify) | Ou
 foreach($asset in $receipt.assets) {if((Get-FileHash -LiteralPath (Join-Path $verify $asset.name) -Algorithm SHA256).Hash -ne $asset.sha256) {throw 'Published download hash mismatch.'}}
 @{tag=$tag;sourceCommit=$SourceCommit;url=$release.url;isDraft=$release.isDraft;isPrerelease=$release.isPrerelease;verifiedAssets=$receipt.assets} | ConvertTo-Json -Depth 6 | Set-Content artifacts/release-receipt.json
 Write-Host "Verified normal release: $($release.url)"
+
 
 
 
