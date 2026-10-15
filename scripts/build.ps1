@@ -44,6 +44,7 @@ function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
 . (Join-Path $PSScriptRoot 'bootstrap.ps1')
 . (Join-Path $PSScriptRoot 'build-receipt.ps1')
 try {
+  $buildStartedUtc=[DateTime]::UtcNow.ToString('o')
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
   Write-Host 'Using project-local portable tooling; administrator rights are not required.'
@@ -108,6 +109,7 @@ try {
   if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
+  @{sourceCommit=$source;version=$version;builtAtUtc=$buildStartedUtc;runtime=$m.runtime;manifestSha256=$manifestHash} | ConvertTo-Json | Set-Content (Join-Path $publish 'build-info.json')
   $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
   $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
@@ -138,6 +140,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 
