@@ -16,6 +16,10 @@ $zip=Join-Path $tools 'tool.zip';$active=Join-Path $tools 'active'
 Compress-Archive (Join-Path $tools 'input/*') $zip
 Expand-Verified $zip $active tool.exe
 if(!(Test-Tree $active $zip)) {throw 'Positive extraction failed.'}
+$hidden=Join-Path $active 'tool.exe'
+(Get-Item -LiteralPath $hidden -Force).Attributes=[IO.FileAttributes]::Hidden
+if(!(Test-Tree $active $zip -Diagnose)) {throw 'Valid hidden member rejected.'}
+(Get-Item -LiteralPath $hidden -Force).Attributes=[IO.FileAttributes]::Normal
 'extra' | Set-Content (Join-Path $active 'extra.txt')
 if(Test-Tree $active $zip) {throw 'Extra file accepted.'}
 Expand-Verified $zip $active tool.exe
@@ -34,4 +38,19 @@ if(!(Test-Tree $active $zip)) {throw 'Interrupted activation recovery failed.'}
 try {$null=Assert-Contained (Join-Path $tools '../outside') $tools;throw 'Escape accepted.'} catch {if($_.Exception.Message -eq 'Escape accepted.') {throw}}
 $lock=[IO.File]::Open((Join-Path $tools 'fixture.lock'),'OpenOrCreate','ReadWrite','None')
 try {try {$other=[IO.File]::Open((Join-Path $tools 'fixture.lock'),'OpenOrCreate','ReadWrite','None');$other.Dispose();throw 'Concurrent lock accepted.'} catch {if($_.Exception.Message -eq 'Concurrent lock accepted.') {throw}}} finally {$lock.Dispose()}
-Write-Output 'PASS: extraction, extra and tampered files, reactivation, malformed journal, interrupted activation, path containment, exclusive lock'
+. (Join-Path $PSScriptRoot 'build-receipt.ps1')
+$m=[pscustomobject]@{publishDirectory='artifacts/publish';executable='tool.exe';project='fixture.csproj';requiredPayload=@('tool.exe')}
+Copy-Item (Join-Path $active 'tool.exe') (Join-Path $active 'Update.exe')
+$receiptPath=Join-Path $tools 'receipt.json'
+$receipt=@{schemaVersion=1;sourceCommit='source';manifestSha256='manifest';version='1.2.3';runtime='win-x64';sourceTree='tree';indexTree='index';command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=(Get-FileHash (Join-Path $active 'Update.exe')).Hash;files=@(Get-ChildItem $active -File -Force | ForEach-Object {@{path=$_.Name;bytes=$_.Length;sha256=(Get-FileHash $_.FullName).Hash}})}
+$receipt | ConvertTo-Json -Depth 6 | Set-Content $receiptPath
+if(!(Test-BuildReceipt $receiptPath $active source manifest 1.2.3 win-x64 tree index)) {throw 'Valid build receipt rejected.'}
+if(Test-BuildReceipt $receiptPath $active changed manifest 1.2.3 win-x64 tree index) {throw 'Changed source accepted.'}
+if(Test-BuildReceipt $receiptPath $active source changed 1.2.3 win-x64 tree index) {throw 'Changed manifest accepted.'}
+if(Test-BuildReceipt $receiptPath $active source manifest 1.2.4 win-x64 tree index) {throw 'Changed version accepted.'}
+'changed' | Set-Content (Join-Path $active 'Update.exe')
+if(Test-BuildReceipt $receiptPath $active source manifest 1.2.3 win-x64 tree index) {throw 'Tampered payload accepted.'}
+Copy-Item (Join-Path $active 'tool.exe') (Join-Path $active 'Update.exe') -Force
+'extra' | Set-Content (Join-Path $active 'extra.exe')
+if(Test-BuildReceipt $receiptPath $active source manifest 1.2.3 win-x64 tree index) {throw 'Extra payload accepted.'}
+Write-Output 'PASS: extraction, hidden members, extra/tampered files, recovery, containment, locks, valid receipt, changed source/manifest/version and tampered/extra payload rejection'

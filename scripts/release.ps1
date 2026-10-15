@@ -31,7 +31,7 @@ if($LASTEXITCODE -eq 0) {throw 'Immutable release tag already exists; no overwri
 $body="Native Windows x64 build from commit $SourceCommit.`n`nUnsigned Squirrel.Windows installer. Windows may show an unknown publisher warning.`n`nBuild and packaging completed. Installation, GUI behavior, update, rollback, and fresh-environment acceptance remain separate verification obligations."
 $notes=Join-Path 'artifacts' 'release-notes.md'; [IO.File]::WriteAllText((Join-Path (Get-Location) $notes),$body)
 $latest=if($Stable) {'--latest=true'} else {'--latest=false'}
-if($Stable -and ((& git rev-parse origin/main).Trim() -ne $SourceCommit)) {throw 'Only exact main head may become latest.'}
+if($Stable -and ((& git rev-parse origin/main).Trim() -ne $SourceCommit)) {$latest='--latest=false';Write-Host 'A newer main head exists; publishing this exact source without changing latest.'}
 Invoke-Gh (@('release','create',$tag,$latest,'--repo',$Repository,'--target',$SourceCommit,'--title',"WinSshCopyId $($receipt.version)",'--notes-file',$notes)+$assets) | Out-Host
 $release=(Invoke-Gh @('release','view',$tag,'--repo',$Repository,'--json','isDraft,isPrerelease,tagName,assets,url')) | ConvertFrom-Json
 if($release.isDraft -or $release.isPrerelease -or $release.tagName -ne $tag) {throw 'Published release is not the expected normal release.'}
@@ -52,5 +52,6 @@ Invoke-Gh @('release','download',$tag,'--repo',$Repository,'--dir',$verify) | Ou
 foreach($asset in $receipt.assets) {if((Get-FileHash (Join-Path $verify $asset.name) -Algorithm SHA256).Hash -ne $asset.sha256) {throw 'Published download hash mismatch.'}}
 @{tag=$tag;sourceCommit=$SourceCommit;url=$release.url;isDraft=$release.isDraft;isPrerelease=$release.isPrerelease;verifiedAssets=$receipt.assets} | ConvertTo-Json -Depth 6 | Set-Content artifacts/release-receipt.json
 Write-Host "Verified normal release: $($release.url)"
+
 
 
