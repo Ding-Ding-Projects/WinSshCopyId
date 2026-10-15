@@ -55,6 +55,7 @@ try {
   } finally {$lock.Dispose()}
   $dotnet=Join-Path $tools 'dotnet/dotnet.exe'
   $env:DOTNET_ROOT=Split-Path $dotnet; $env:DOTNET_MULTILEVEL_LOOKUP='0'; $env:DOTNET_CLI_TELEMETRY_OPTOUT='1'
+  $env:DOTNET_GENERATE_ASPNET_CERTIFICATE='false'; $env:DOTNET_NOLOGO='1'; $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE='1'
   $env:PATH="$env:DOTNET_ROOT;$env:PATH"
   $sdk=(& $dotnet --version).Trim(); if($sdk -ne $m.sdk.version) {throw "Expected SDK $($m.sdk.version), found $sdk"}
   Write-Host "Verified portable SDK $sdk and packaging tools. Elapsed: $($timer.Elapsed)"
@@ -70,12 +71,15 @@ try {
   if($version -notmatch '^\d+\.\d+\.\d+$') {throw 'BUILD_VERSION must have three numeric components.'}
   Invoke-Checked $dotnet @('publish',$m.project,'-c','Release','-r',$m.runtime,'--self-contained','true','-p:Platform=x64','-p:WindowsAppSDKSelfContained=true','-p:WindowsPackageType=None',"-p:Version=$version",'-o',$publish)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
-  Copy-Item (Join-Path $tools 'squirrel/tools/Squirrel.exe') (Join-Path $publish 'Update.exe')
+  $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
+  Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
+  $updaterHash=(Get-FileHash $updaterSource -Algorithm SHA256).Hash
+  if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   $payload=@(Get-ChildItem $publish -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
-  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
   if($Action -eq 'installer') {
@@ -101,6 +105,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 
