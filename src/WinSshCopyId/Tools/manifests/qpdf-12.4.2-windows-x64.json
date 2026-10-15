@@ -1,0 +1,1470 @@
+{
+  "Id": "qpdf",
+  "Version": "12.4.2",
+  "Architecture": "x64",
+  "Source": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-msvc64.zip",
+  "ArchiveBytes": 28183147,
+  "ArchiveSha256": "DB87077E683630C1217E0E8F9A20A9749D952AB676E881C3689187763A5DE25D",
+  "License": "Apache-2.0; preserve packaged notices and third-party licenses",
+  "LicenseSource": "https://github.com/qpdf/qpdf/blob/v12.4.2/LICENSE.txt",
+  "Members": [
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/concrt140.dll",
+      "Length": 374200,
+      "Sha256": "54716F0738AF891F283D213B5C8D11B25896BB8EE3097D301EAE718560CF974E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/fix-qdf.exe",
+      "Length": 121344,
+      "Sha256": "110741AF48048DCDEA7D9B14DA685B855BE71617F5D76AAD42036A2304616656"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/msvcp140.dll",
+      "Length": 643512,
+      "Sha256": "7C26614E1D733892C2DEAC7E245CE115504B1D80592DD0A01B08E3E5A55F89CA"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/msvcp140_1.dll",
+      "Length": 35768,
+      "Sha256": "206C931BF90FDAD8816DE3B5E2EF80B2BCAA9406C89ECC05FE6FDDFFE251E982"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/msvcp140_2.dll",
+      "Length": 274872,
+      "Sha256": "D50D7883F20D1DC6191768D3746F52DD9CAC89C346FFAED5BE1F110C2F34A838"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/msvcp140_atomic_wait.dll",
+      "Length": 57792,
+      "Sha256": "3D0CBFAA1BF3EECF5A3F4491D2960EE803CB994F30292C6ADC4A07C498F60E2B"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/msvcp140_codecvt_ids.dll",
+      "Length": 31160,
+      "Sha256": "8A65C7596EF2E6938731F5A1058E7E40145B6D97967CC649231A076B9A608D78"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/qpdf.exe",
+      "Length": 19456,
+      "Sha256": "1BDAF878F37EAFFEA1EA3C30591214C77636A0F2FC7432427516B6E22E36C0FF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/qpdf30.dll",
+      "Length": 7448064,
+      "Sha256": "8812952678DE93E0750308A113AA650E9161AF466F9770679EA9673ADEB61041"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/vcruntime140.dll",
+      "Length": 178616,
+      "Sha256": "D1F4225DF2CD877DBF130D5668A021DCE3F94118455FF5EC952061C30AFC9CE7"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/vcruntime140_1.dll",
+      "Length": 50112,
+      "Sha256": "A7146C08F89FE5B04541AB507CDB59FF7B44534D4BA3C668A426C6450A03434E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/bin/zlib-flate.exe",
+      "Length": 21504,
+      "Sha256": "DBE9A8E3EF6F9A2AB4850630C13C18A1E8E29FE15ABF0C1C86C98A92ED174EBB"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Buffer.hh",
+      "Length": 2863,
+      "Sha256": "EC2A9EE18AA352AEE6DAD002F2CE1590E1A44F22BD5F8019532952F5A6C889D7"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/BufferInputSource.hh",
+      "Length": 2266,
+      "Sha256": "42E52C983144142247944729B8E819E891CFD2C5D2C4D59F1475C3B18B0B1686"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/ClosedFileInputSource.hh",
+      "Length": 2692,
+      "Sha256": "9CD69D69765DBD3DB0F3745386D6F0ABA69951EA12CCF0B16398653D37EB7B54"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Constants.h",
+      "Length": 10768,
+      "Sha256": "04B3907AC1ABD016E3D1BBBD82BE317FD6362AD13672A9972567FB0C1BF7F406"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/DLL.h",
+      "Length": 4748,
+      "Sha256": "91A41BD530D100E89D1F50D5C3C51A5FA5388155E5D8CF9E7AF3FB44A4B948B6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/FileInputSource.hh",
+      "Length": 2124,
+      "Sha256": "2AD4CE78F9787360E3E61DD56625AA812C3FD280EC450B87F4F52EB41579557E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/InputSource.hh",
+      "Length": 3778,
+      "Sha256": "235596A597B5D56FF64EADCE8F118EF27D3CB010DFD3C0397C58D463F063D4AB"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/JSON.hh",
+      "Length": 16517,
+      "Sha256": "75F4F3C8EC9B93914195B204CF288B2F778481225D26E489ABFC7C2A145BC8D0"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/ObjectHandle.hh",
+      "Length": 5721,
+      "Sha256": "5659A3F483E0B4DF9D5381F0FDA9397C2CD89EC25C2C569A8E04C1033FFC83BA"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/PDFVersion.hh",
+      "Length": 2187,
+      "Sha256": "D413F4A9A2E5B28D1A5B44D11758D806D2116E845461BC2B34402B0AC1DC46B8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pipeline.hh",
+      "Length": 4266,
+      "Sha256": "72162887D2C339E3AED6CB2F91F49CDC2D8AA762C0E7C985197F970839E99BBB"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Buffer.hh",
+      "Length": 2958,
+      "Sha256": "50ABBAE1E7BD31176F898333CDDFA2E9AD9F28922DC9F214AECCA7ECE5E638FA"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Concatenate.hh",
+      "Length": 2071,
+      "Sha256": "E15A5886AD8534F098FA9C6C8CAD82A4A2F2BDBAEFE83BFC122A896550C3B6E4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Count.hh",
+      "Length": 1758,
+      "Sha256": "8FE22C357420A834EBE3B6036AAF567B30FA790ED8C6AA42097ADF6D38F68653"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_DCT.hh",
+      "Length": 3156,
+      "Sha256": "2A29229D05DBC74F5D80AB1D199B2F7E0D733C50602D9EF9D00EC081F45C7B3C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Discard.hh",
+      "Length": 1458,
+      "Sha256": "BC48D0223CD0B03A3C770F7ACD88627A82C42F7B6467C4756764EBEF14436231"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Flate.hh",
+      "Length": 3901,
+      "Sha256": "C765E118F67DD06AB5C6BF18CD77D3AC96EB80D5CC9820DCC9E0A4BD3F4A3A5F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_Function.hh",
+      "Length": 2615,
+      "Sha256": "D66601D7441B033270D9A7C19CFE9B7CC3FC63E3FA5DE26A5FD14F790BE3AA88"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_OStream.hh",
+      "Length": 1628,
+      "Sha256": "EF3D42A32DF30B767A96EAD9A043413D7D5469ED17B0610EB9FC260BB3B9EA1E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_QPDFTokenizer.hh",
+      "Length": 2232,
+      "Sha256": "07D80D6BDFD886DCD8608EBC062C4D0F669100CB1BF4545588B04D38C60AD4E4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_RunLength.hh",
+      "Length": 1892,
+      "Sha256": "4E0B2037B64B69EFFE6BD4E72589A6429D02BD8C153B4F2A0DF753121E41A068"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_StdioFile.hh",
+      "Length": 1631,
+      "Sha256": "86AE4EC57868DBABF7A36563B69005E8DA40641EBE91EA82514517CCB9C2F33E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Pl_String.hh",
+      "Length": 2115,
+      "Sha256": "2479E920D448ED8C6EF07F0D85717EE0C9AC4C573CA5B930AEBE962A83C956B5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/PointerHolder.hh",
+      "Length": 8556,
+      "Sha256": "7638DF03176CDA3A47F7E7EB64BD271F3CEB2F6750838198078512244168CCD3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QIntC.hh",
+      "Length": 9222,
+      "Sha256": "2F4F8A160203B0AB8D12512BE4AF9DC7F19ADB12C523F01806B6B9ABB8C41465"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDF.hh",
+      "Length": 39213,
+      "Sha256": "91823BBFED23E610523E12CAB92153C673F0B2B93462CAB7BC746F01CFCDC690"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFAcroFormDocumentHelper.hh",
+      "Length": 12334,
+      "Sha256": "5FDF36AC5B4FBC713869519A8F07757C315C95753F5958FEADEDA8BB8A6C1956"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFAnnotationObjectHelper.hh",
+      "Length": 4297,
+      "Sha256": "52AA6D5A1370D9FE27983EF441ADC6288AD045E03815AD422F892CD970A5825C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFCryptoImpl.hh",
+      "Length": 3027,
+      "Sha256": "0A950FF01EDDDDDD4B2F429BC59A2EBC676231E15637812B694017E6C2E27ACF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFCryptoProvider.hh",
+      "Length": 3829,
+      "Sha256": "FC63B344658703B1A3BE915F6EF31A6B9E4C68BAADCEF172B37645D8394F25EB"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFDocumentHelper.hh",
+      "Length": 2066,
+      "Sha256": "BA9E6C5B93FDA9D261A1C5724EE5FE33339F267556FB7EB7BB296D23D90DE517"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFEFStreamObjectHelper.hh",
+      "Length": 4177,
+      "Sha256": "A9BC391294B61AD460A8226D68A4989BEF434F27F0AAAAA6349E8E5DEF672555"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFEmbeddedFileDocumentHelper.hh",
+      "Length": 3512,
+      "Sha256": "878098D1B6BD61696E16DC198ECD2995A6C2768B4D94ACA9020E22ADD24C8580"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFExc.hh",
+      "Length": 2934,
+      "Sha256": "7A9B5B43AC4D052475910BC4D31A0A9BD1B978AD30CB978C9051991867E24134"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFFileSpecObjectHelper.hh",
+      "Length": 3906,
+      "Sha256": "5376E700DD2574BFA42EABC122465F0C9207D6311EF7565F362A59702CC5D11F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFFormFieldObjectHelper.hh",
+      "Length": 8271,
+      "Sha256": "FB9D1F12C4C74B0FB733196616CB94537FCABEACE73D52A7AFD5424DE542E944"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFJob.hh",
+      "Length": 19139,
+      "Sha256": "19B3A731E794463B43A8F07F8716D519307B2CB4B1C9F50D73FB680DF4448F65"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFLogger.hh",
+      "Length": 6570,
+      "Sha256": "D10266FFDF970FA17CC5E17368FEB2DF182F8A5F6C33FE35F905FCA7277B3D45"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFMatrix.hh",
+      "Length": 2938,
+      "Sha256": "E5427EF340C5794027B919747DF6BD44FD36F33FD5ED810F357DA32895B8CB61"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFNameTreeObjectHelper.hh",
+      "Length": 6475,
+      "Sha256": "954EE4C1A024F59A53182F2A9CF8E266D16AF96269F4B98FB25A8FB0ED23A3CD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFNumberTreeObjectHelper.hh",
+      "Length": 7257,
+      "Sha256": "2FFBAD677B89582CABE425A42E4DA6237055FCF41E1AA43732A3C5CB6DE3153D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFObjGen.hh",
+      "Length": 3785,
+      "Sha256": "796FEF284B3DDB931CEF74A09DFEF8307EFFC8526369E6817CD45C87FB479227"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFObject.hh",
+      "Length": 1591,
+      "Sha256": "5A243A70A88F0CB03AF81FE1ECC745018B9981DEF1523D97BABEC644A5F46EFF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFObjectHandle.hh",
+      "Length": 69631,
+      "Sha256": "49BE64AA5DC4DA94EC24C893619908A8ADD317FE292072FDF2F213ACB54EF999"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFObjectHelper.hh",
+      "Length": 2355,
+      "Sha256": "F2DBA00D2A792459E23FA695BF792E86CAACF62310387CBE3715C900A6943C8D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFOutlineDocumentHelper.hh",
+      "Length": 3250,
+      "Sha256": "2BF70658B6FBFB955E249A0193CC1FD3ADEC3BEA88857CBCC92E788F6AA5B60B"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFOutlineObjectHelper.hh",
+      "Length": 3744,
+      "Sha256": "51B93E351B6CB33819A0C137F109FB34184EA91A4BC71D69D9B75D631A80C876"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFPageDocumentHelper.hh",
+      "Length": 6161,
+      "Sha256": "24B4E82F2D44194C40DC04C4AB1BA7CD503EC1B9FF5BCB9D255B69CAA215402E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFPageLabelDocumentHelper.hh",
+      "Length": 4210,
+      "Sha256": "CC8BFE710EF54DAFBE71DC5A705BF79489D264F0DB581ABAC97CF1FCCB7D4307"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFPageObjectHelper.hh",
+      "Length": 22159,
+      "Sha256": "2F0DF4B47A37BE932F8F77B6169B891511A6C7BFB1AA72E55C811767234110EB"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFStreamFilter.hh",
+      "Length": 3044,
+      "Sha256": "D7BA1FDFDFA1E1A8C6D9404557DBEB8AA208A7C93931D4ED98F763658A3E8525"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFSystemError.hh",
+      "Length": 1914,
+      "Sha256": "A9562E21BACC5A09EF4913283614A9C6596438D5627737AB3D676F44BF734395"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFTokenizer.hh",
+      "Length": 6931,
+      "Sha256": "1382AD74E399F2FF7CF81590013F6C77BF50F564E3C0DECBED1C6E220E0F2CCC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFUsage.hh",
+      "Length": 1240,
+      "Sha256": "EC6414CB4CFB22F6A43BA07DCE973E3C959A6160F073F197FB359CCFA8FA50BF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFWriter.hh",
+      "Length": 21734,
+      "Sha256": "CE8A04877793641929AA0C472F12DD3320ECD17B57AED395DBA9C40ED0497CCD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QPDFXRefEntry.hh",
+      "Length": 2380,
+      "Sha256": "FC89C061F0832FA1448F838BD484883FDAAE89DBFF13E88F54E983E11092D2C4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QTC.hh",
+      "Length": 1612,
+      "Sha256": "F3920033E23BBD8E98444C5220846975D1A2AA8614252ADCBB971476A6BE1036"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/QUtil.hh",
+      "Length": 22492,
+      "Sha256": "E831197756FCCE4A060B04ED1A07B27ECAB67076094533B581BD98490F2029D1"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/RandomDataProvider.hh",
+      "Length": 1485,
+      "Sha256": "0B6F8F9231688913B16D6A55F9B078424F41FEB5BFF1599AC0ED4C7655B40E34"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/Types.h",
+      "Length": 1269,
+      "Sha256": "7DCECC58966E093C40AC81C0E45025AF0DE234B6A8F839369D27F8C02BBFAD88"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_att.hh",
+      "Length": 569,
+      "Sha256": "4C2B171EA00531DB54720BF49A43F8B34481586AE7FB6CBF225099EE42BC5BB4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_copy_att.hh",
+      "Length": 303,
+      "Sha256": "50609012BFF14FD82F0649185940D617D05D530CDC522185C7F3920A561CCB42"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_enc.hh",
+      "Length": 853,
+      "Sha256": "28446F3C32153A52AFA239EA40503E6CC8AC2C026813526A349E0CD4AE17DDD5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_global.hh",
+      "Length": 592,
+      "Sha256": "7DF0FF87D18D7FA6D57437960377509420B6B6EB9527B534996F86D3BD7A0DDC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_limits.hh",
+      "Length": 0,
+      "Sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_main.hh",
+      "Length": 4289,
+      "Sha256": "7A50DE4A051FE68BAFDC1111AF346E19F84589D9D5436A266E88872F4EBD6791"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_pages.hh",
+      "Length": 356,
+      "Sha256": "9F628E24F11C78775C0BB605045A10CB109ACB2105B89DEAFFD1C0435C0A23BE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_set_page_labels.hh",
+      "Length": 177,
+      "Sha256": "B3CC0F21029F6D89EFA043DCDBFA183CB59325B6506001C18911614FE8E568EC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/auto_job_c_uo.hh",
+      "Length": 456,
+      "Sha256": "3084B3E2E2D62941674FC8CC56987FC8BDE40E3763E759FAA58459C2ADA4BAF3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/global.hh",
+      "Length": 20779,
+      "Sha256": "AB11AED1B58A8AB34D0D993FD3B3C7600CFE768F9BEF01F351CE38F0CDE93535"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/qpdf-c.h",
+      "Length": 45350,
+      "Sha256": "B6E4FFB5F81E471E4F494EA86935EB1A679C87DA1DD0520E762ABCE34BDB142F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/qpdfjob-c.h",
+      "Length": 6697,
+      "Sha256": "CB34BC12244E046840B0C836E773CE27EF9AD4F3E0B97EA596A3598551206075"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/include/qpdf/qpdflogger-c.h",
+      "Length": 3637,
+      "Sha256": "F98A8982E3E6EBC3E7EF6C01C7F24218B280ACEA2A2A4697A1E53C6019443879"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/cmake/qpdf/libqpdfTargets-release.cmake",
+      "Length": 1412,
+      "Sha256": "F13FFC9FB4FE02F54352ED98B3704FD94C97ECB7BB9E9355694F755B074D8D7B"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/cmake/qpdf/libqpdfTargets.cmake",
+      "Length": 4576,
+      "Sha256": "AEA615FA9563081F26A47C927D6117C777A22F2E65E7769217987A37794725AD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/cmake/qpdf/qpdfConfig.cmake",
+      "Length": 961,
+      "Sha256": "EF6E3B2D60C99F836A41BA253C7112D1CB735F06D3992E327ED41171FF1EC188"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/cmake/qpdf/qpdfConfigVersion.cmake",
+      "Length": 2830,
+      "Sha256": "ED29DA4762DC59D03B08E01839973D8EF42B456A3EB93907111A92592C09E4A0"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/pkgconfig/libqpdf.pc",
+      "Length": 306,
+      "Sha256": "268B75F7F50794C5A62D41F0582A2E15F32930702EE0D3BB3D07E8995C370D11"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/qpdf.lib",
+      "Length": 576156,
+      "Sha256": "D5869B5CC7C0804376B7EAC10C8F0044F9572152A23194AB718694CB04EA74EC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/lib/qpdf_static.lib",
+      "Length": 53542850,
+      "Sha256": "8E922C323B62538F046C0E935D6A05B7FBA1C504BF7CD2FC8FF01533644F85C2"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/extend-c-api-impl.cc",
+      "Length": 1157,
+      "Sha256": "293760704155D14E43F35F7DFADB059315B7D793534B96BFADCB26E19F804F58"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/extend-c-api.c",
+      "Length": 1472,
+      "Sha256": "AEE72E889CDE637595CF77A26BBA465EFFD42534F71F54FAF3188B69B26F7590"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/extend-c-api.h",
+      "Length": 736,
+      "Sha256": "2A1A65E1D217CC3E7798F562D249C473C4CDC8EF01C4D7BE317FDBCE1229B8D2"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-attach-file.cc",
+      "Length": 6810,
+      "Sha256": "A4785DD66212AEFA1F9C8A23A7846175B1364E6C24975DD4D37B5A57E5AFF44F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-bookmarks.cc",
+      "Length": 5137,
+      "Sha256": "15D3BD5AFF312A4CDF046E867855E9EFBAE5835379916B97D8AFF54514F5D1A5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-c-objects.c",
+      "Length": 2457,
+      "Sha256": "2F9129B228498372EB1B7394A3E55F4D73019B8CE3C192732A4ED1AFDD436989"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-count-strings.cc",
+      "Length": 2769,
+      "Sha256": "F731FFB51369FD65CBEAB62F0610D4A8BCDF96CF2F36007CCEB2379A7F180AB7"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-create.cc",
+      "Length": 12969,
+      "Sha256": "B595891FA09EA13C3DE93333864F352EC6834C79BED3948FD015D0E3E40BB913"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-custom-filter.cc",
+      "Length": 18446,
+      "Sha256": "F1C5295145A01CBFF00701F6281DD5DF32E4F302B2CD46470D3183FE6ABAD42C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-double-page-size.cc",
+      "Length": 2960,
+      "Sha256": "8C90D33F9DC76ACD472C3C3E9B1ACADD5D7B38C0CC66641533323DC99480B5EC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-filter-tokens.cc",
+      "Length": 7131,
+      "Sha256": "38A72E6BF45106546011F31625E726783F82164EDCAE0292590CA338C60A97D5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-invert-images.cc",
+      "Length": 5906,
+      "Sha256": "E28AB79BAE83E0BD5D393C2447D7BEB8C7633D2A8E04489C259E14A9EC72B463"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-linearize.c",
+      "Length": 1865,
+      "Sha256": "B0A679D88D7872E4C5B973C3027A9EFCCDCB40C1B98242D2CEFF9CB22AF7B5F3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-mod-info.cc",
+      "Length": 5120,
+      "Sha256": "7D67D62BDE68D9FE2C05216C4E6C909EF84F571252FBAB92A0A1803DF6DF66C5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-name-number-tree.cc",
+      "Length": 6626,
+      "Sha256": "AE8DDF5034DC0CF5780447744D57DEC197F5C8BBC20D545CA4BB130BFA8B3B95"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-npages.cc",
+      "Length": 989,
+      "Sha256": "9DA09CCAE054106E4A6DACCE81BFAFA06AAFA46F9EA37E492CD3982E426634D7"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-overlay-page.cc",
+      "Length": 3106,
+      "Sha256": "A394254C4DEAF22D805AA2377B592D2E5B88219314327F244FFD76B12E8B8CFE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-parse-content.cc",
+      "Length": 2024,
+      "Sha256": "E7382BB3EF8FDA74BE37B1F38AC5FB8CA13ECD71DD5ABAE417BB0F4E758EDCAF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-set-form-values.cc",
+      "Length": 2946,
+      "Sha256": "4758754B3269625F3ABFC54545F57DD370D243EE5721B16CC9EF66F969EB8402"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/pdf-split-pages.cc",
+      "Length": 1873,
+      "Sha256": "37A9A8E65EE97E119916DAD6336E29AC20796C2315DB0182CB51AD44E264397F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/qpdf-job.cc",
+      "Length": 2722,
+      "Sha256": "8FC4D337D0A351B17395012CD7E39B5A633B781D4B82003F6633202E0062ECCE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/qpdfjob-c-save-attachment.c",
+      "Length": 2623,
+      "Sha256": "9325ABC346EAAD0E241CCAA5C880B99159EB93C3C2D784325E16D1D379B75FEF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/qpdfjob-c.c",
+      "Length": 1455,
+      "Sha256": "744FA12894898833F1C41173DC8ED12ECB4A8E68C7A7ECE5FC80A4A8FF3B9866"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/qpdfjob-remove-annotations.cc",
+      "Length": 1879,
+      "Sha256": "23AADE8601BCD5ADFD95318E6492702F9B9E4845622C5AEDC1B2E7F7DFEA99F3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/examples/qpdfjob-save-attachment.cc",
+      "Length": 1365,
+      "Sha256": "272948B6B41DBDC45D084A301A031C8A8DAC1B26E2317236DD6190A09C4A34AF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/.buildinfo",
+      "Length": 231,
+      "Sha256": "3A74454D892B3C19821EC58FA898A5D7989E91606CE9C2513C84B5F8DFAE6618"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/acknowledgement.rst.txt",
+      "Length": 790,
+      "Sha256": "0A7F64E1807AD70DD583525DF6EC58631544D078D03B0FA5FCE35CA3281ADF7F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/cli.rst.txt",
+      "Length": 167873,
+      "Sha256": "02792F51D72029EEA5A67F12770A8F46C36E15F8A774E67C85954BE16DC7E77F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/contributing.rst.txt",
+      "Length": 6447,
+      "Sha256": "B23830770A1A1335C05AA0CDE5F399F3BF5A34B0A90C0E508FDC94C64EDE7F00"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/design.rst.txt",
+      "Length": 58030,
+      "Sha256": "E361894A0D59C6F7E2AE49447BB56958B0C03EBDBE2FA193FCE9B80073263B8C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/download.rst.txt",
+      "Length": 366,
+      "Sha256": "E045480873B6204AC93ADB3AD8C24C1F86D437F90919600833A50F51A6259BD5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/encryption.rst.txt",
+      "Length": 15153,
+      "Sha256": "C616B4D5B94EBD547E0AF9E5374BC322EE59F642CE19B1AD7A905BF59678E87F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/index.rst.txt",
+      "Length": 882,
+      "Sha256": "20F153B815E2DE2F053804E9793386E172F25F38D70D42A56E51FDEB3C70D0B8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/inspection.rst.txt",
+      "Length": 2339,
+      "Sha256": "34CA9A9A62082172A2C01B4D10597B1AAFB8D46AAE3FE46A3DDC62273C4FEB15"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/installation.rst.txt",
+      "Length": 33961,
+      "Sha256": "A84342A0F1B98952B98E17F91698468FA72139C70AF61F1E90DD23FB470199CF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/json.rst.txt",
+      "Length": 39404,
+      "Sha256": "C1DD6C9733E2BE54EA03CD46DC40EB599EB1AEECC16ED16CA650850F92EF79C3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/library.rst.txt",
+      "Length": 4913,
+      "Sha256": "290450E9E065FD8C03EF9822905DFAB15BDC048A7188214502414B4F414611F5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/license.rst.txt",
+      "Length": 458,
+      "Sha256": "6BD81AA03C651C1A88B50EC99DC060D458A4C6439F46BF109AFA6A7178538A90"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/linearization.rst.txt",
+      "Length": 8388,
+      "Sha256": "0984616B57D0ABB2DA2A350E9D790B2B4A28C5C82A4F6CD7A25FDC01AA142715"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/object-streams.rst.txt",
+      "Length": 7419,
+      "Sha256": "831F30B0A2CE016EF6094BC394363B0AE2F7D48D482EC5BCD60D22E2AE5562A6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/overview.rst.txt",
+      "Length": 1996,
+      "Sha256": "C7E8E9C3A6827E5BCFEF12943D2B6C88E48617D00C4389CC6EA51FCF8DCD6475"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/packaging.rst.txt",
+      "Length": 6888,
+      "Sha256": "F3A41868F1EC6F1B2F7709F387D1ABA7E64E770599B9F943DE9B359FB5958ADD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/qdf.rst.txt",
+      "Length": 5131,
+      "Sha256": "FCADEC62F894A10B96887EE2383093744B762C13D10C62B342E8AAB47927E2BF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/qpdf-job.rst.txt",
+      "Length": 9019,
+      "Sha256": "BF0508287058E5DF2A8B8745EDC3E7E418ACCFA0931C0E2201A948BDF64BAAED"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/release-notes.rst.txt",
+      "Length": 185928,
+      "Sha256": "8F275C20FF9BFECB759780552DA35F25EF771B39FE5EF8659C455944B92C3A0D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_sources/weak-crypto.rst.txt",
+      "Length": 9240,
+      "Sha256": "338A58A4E328C2E9E75C13879E22726E6C24B334EEFF932D641DC488707C8E22"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/_sphinx_javascript_frameworks_compat.js",
+      "Length": 4289,
+      "Sha256": "480A2C7377252C14A11BCA4D3A49DFA16EA540A998FA637FAE0189AEE1B89113"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/base-stemmer.js",
+      "Length": 12250,
+      "Sha256": "EB67BEDBFA264BD8A2201EBE07C861ABBCBC56D7EAA28C53FF8B84F65CCD450F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/basic.css",
+      "Length": 14687,
+      "Sha256": "32BE6D1C8F99E8328DC360F8319B9ACEAE201281D5A337D2233A51B3E713FE79"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/badge_only.css",
+      "Length": 3329,
+      "Sha256": "F1399E4FC48C3FF17B5037D3512FCC451FB0ABC2C95B4B8D12AAB50CDD9D1D6F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/Roboto-Slab-Bold.woff",
+      "Length": 87624,
+      "Sha256": "9FEC87CADBE2413B255F1EC577573A83F1CA2E1C37AA023DBEBCD3A7B864636A"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/Roboto-Slab-Bold.woff2",
+      "Length": 67312,
+      "Sha256": "1A0C024DD1A267C52D5575469FFE8570D1E84164DE7D393CF3414BAFD17D7A0C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/Roboto-Slab-Regular.woff",
+      "Length": 86288,
+      "Sha256": "9F32630E2C0C5135BF1E86E36CB65B3932E4410644235BC2BD995E9C7F6FF117"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/Roboto-Slab-Regular.woff2",
+      "Length": 66444,
+      "Sha256": "874E42222856D7AF03B3F438D21D923A4280D47FE67C48510E2174A1579795EF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/fontawesome-webfont.eot",
+      "Length": 165742,
+      "Sha256": "7BFCAB6DB99D5CFBF1705CA0536DDC78585432CC5FA41BBD7AD0F009033B2979"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/fontawesome-webfont.svg",
+      "Length": 444379,
+      "Sha256": "AD6157926C1622BA4E1D03D478F1541368524BFC46F51E42FE0D945F7EF323E4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/fontawesome-webfont.ttf",
+      "Length": 165548,
+      "Sha256": "AA58F33F239A0FB02F5C7A6C45C043D7A9AC9A093335806694ECD6D4EDC0D6A8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/fontawesome-webfont.woff",
+      "Length": 98024,
+      "Sha256": "BA0C59DEB5450F5CB41B3F93609EE2D0D995415877DDFA223E8A8A7533474F07"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/fontawesome-webfont.woff2",
+      "Length": 77160,
+      "Sha256": "2ADEFCBC041E7D18FCF2D417879DC5A09997AA64D675B7A3C4B6CE33DA13F3FE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-bold-italic.woff",
+      "Length": 323344,
+      "Sha256": "980C8592E5488DF256192C999E92DB8FD302DB8CD8909B7FA266A684E37E45F8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-bold-italic.woff2",
+      "Length": 193308,
+      "Sha256": "C0916A33340D063F7B05679E08031E729D1888444706F04804705DA5966D895D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-bold.woff",
+      "Length": 309728,
+      "Sha256": "0E56B17D142EB366C8007031D14E34DA48C70B4A9D9A0CA492E696A7BAE45E1E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-bold.woff2",
+      "Length": 184912,
+      "Sha256": "AE88FC0D7A961832F809527D30BD3983A6866D42F66A56ADE23F543681594DB6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-normal-italic.woff",
+      "Length": 328412,
+      "Sha256": "26318A1467A5E5CAF10B04CFA942D079632560CD7A29CEC565FD1DC9F7EC5081"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-normal-italic.woff2",
+      "Length": 195704,
+      "Sha256": "4465765F2F6EDDCDAD34FFD7CAB559E56BC0E75E45E192F85E9562B0771481DC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-normal.woff",
+      "Length": 309192,
+      "Sha256": "5B9025DDA4D7688E3311B0C17EDDC501133B807DEF33EFFAEF6593843CF5416E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/fonts/lato-normal.woff2",
+      "Length": 182708,
+      "Sha256": "983B0CAF336E8542214FC17019A4FC5E0360864B92806CA14D55C1FC1C2C5A0F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/theme.css",
+      "Length": 137285,
+      "Sha256": "17C556BC5F2B93A5FB4AA22A2706DA52076F6D73F8EF4A6E1673DD4132A2AD68"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/css/wraptable.css",
+      "Length": 128,
+      "Sha256": "D7161D28B4F54A9CE25B4D4DAFF97D1D459E2859187ECF40377EA9DE089D7F2E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/doctools.js",
+      "Length": 4332,
+      "Sha256": "6B2524C2723CC6E06CBF056E0B2861D50BA8FDD082ECE13378BFB45D7A090528"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/documentation_options.js",
+      "Length": 329,
+      "Sha256": "20EB2EAF8AA3DE50F376CF5C63D56597DB42762219920202F79FD390455D33AF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/english-stemmer.js",
+      "Length": 30599,
+      "Sha256": "1F995807FDE5A820390FB9046E4813A7EB8F20A4684650F14FBDEB4C2AD7FFC5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/file.png",
+      "Length": 286,
+      "Sha256": "5C4BC9A16AEBF38C4B950F59B8E501CA36495328CB9EB622218BCE9064A35E3E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bold.eot",
+      "Length": 256056,
+      "Sha256": "B91FC1CA55DF440DC11354B32A39B45DB663D24BB17B16DCB2E706330955B0D1"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bold.ttf",
+      "Length": 600856,
+      "Sha256": "F71F833C099F450606F8107B83EF208AE918C0EA00779466D45E9BE96B0BC7CC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bold.woff",
+      "Length": 309728,
+      "Sha256": "0E56B17D142EB366C8007031D14E34DA48C70B4A9D9A0CA492E696A7BAE45E1E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bold.woff2",
+      "Length": 184912,
+      "Sha256": "AE88FC0D7A961832F809527D30BD3983A6866D42F66A56ADE23F543681594DB6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bolditalic.eot",
+      "Length": 266158,
+      "Sha256": "B3D585879A02F48C5D43D8F91D06B167E367A31934BB3B8147C0A90B5CA32BFC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bolditalic.ttf",
+      "Length": 622572,
+      "Sha256": "F98D040631714EABFFD0FFB747576674FA78C2910F6D9E3DC0C58481D03C1898"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bolditalic.woff",
+      "Length": 323344,
+      "Sha256": "980C8592E5488DF256192C999E92DB8FD302DB8CD8909B7FA266A684E37E45F8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-bolditalic.woff2",
+      "Length": 193308,
+      "Sha256": "C0916A33340D063F7B05679E08031E729D1888444706F04804705DA5966D895D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-italic.eot",
+      "Length": 268604,
+      "Sha256": "BC24DBE04F5B2415678F978E7E2F630CC6610670D684E088E73AD29C439EAFE3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-italic.ttf",
+      "Length": 639388,
+      "Sha256": "12D825AF88EAFEA1CE3AA469F83C03ACAECD0D03F690F409C8643529F1205B4F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-italic.woff",
+      "Length": 328412,
+      "Sha256": "26318A1467A5E5CAF10B04CFA942D079632560CD7A29CEC565FD1DC9F7EC5081"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-italic.woff2",
+      "Length": 195704,
+      "Sha256": "4465765F2F6EDDCDAD34FFD7CAB559E56BC0E75E45E192F85E9562B0771481DC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-regular.eot",
+      "Length": 253461,
+      "Sha256": "E735410675EACC363B257112F39EB819A854B03077D7B1F0CAA6E7660FFBD8B3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-regular.ttf",
+      "Length": 607720,
+      "Sha256": "089AB6D4A57E0E6C4DD3B681B6FD50A5184F1B902429D35E1227E52D6CCAD1BD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-regular.woff",
+      "Length": 309192,
+      "Sha256": "5B9025DDA4D7688E3311B0C17EDDC501133B807DEF33EFFAEF6593843CF5416E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/Lato/lato-regular.woff2",
+      "Length": 182708,
+      "Sha256": "983B0CAF336E8542214FC17019A4FC5E0360864B92806CA14D55C1FC1C2C5A0F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.eot",
+      "Length": 79520,
+      "Sha256": "4438991A12FF951CC8D0E83348EC06D9F910591B1B014C476E9595D4DA099E48"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.ttf",
+      "Length": 170616,
+      "Sha256": "BA12D2EAB1FA765B6B05398FA7E047DD76293F0C051CE57A8F7B0C591C14D42B"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.woff",
+      "Length": 87624,
+      "Sha256": "9FEC87CADBE2413B255F1EC577573A83F1CA2E1C37AA023DBEBCD3A7B864636A"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.woff2",
+      "Length": 67312,
+      "Sha256": "1A0C024DD1A267C52D5575469FFE8570D1E84164DE7D393CF3414BAFD17D7A0C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.eot",
+      "Length": 78331,
+      "Sha256": "B3809B71D417C6C225E77A55880AA7915B4E4B4F77A5E2D243F3563731E7F55C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.ttf",
+      "Length": 169064,
+      "Sha256": "13AA5F54C6F2FA2E388FE0E675CDBCC6A81F6270A8BF9C03A5DF8AF9CB022810"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.woff",
+      "Length": 86288,
+      "Sha256": "9F32630E2C0C5135BF1E86E36CB65B3932E4410644235BC2BD995E9C7F6FF117"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.woff2",
+      "Length": 66444,
+      "Sha256": "874E42222856D7AF03B3F438D21D923A4280D47FE67C48510E2174A1579795EF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/jquery.js",
+      "Length": 89501,
+      "Sha256": "FF1523FB7389539C84C65ABA19260648793BB4F5E29329D2EE8804BC37A3FE6E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/js/badge_only.js",
+      "Length": 934,
+      "Sha256": "F0A4808D04C4D55378751AC096A8376B64B1A704C82584B0EE590212CF413013"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/js/theme.js",
+      "Length": 5023,
+      "Sha256": "536AD2D746E944C5570CC15BADAECCC3C0582A1B66E45511FE4EDCE32B6DA510"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/js/versions.js",
+      "Length": 6978,
+      "Sha256": "0998CC5239113CB6009AB1730E24EDE85673759810EE8FB1E2F912305282A4AA"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/language_data.js",
+      "Length": 13589,
+      "Sha256": "AF1C48FC5B0E0E9423CAC068D55CDF22F541648709AE4B9190EE8AA9C2B08150"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/minus.png",
+      "Length": 90,
+      "Sha256": "47E7FC50DB3699F1CA41CE9A2FFA202C00C5D1D5180C55F62BA859B1BD6CC008"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/plus.png",
+      "Length": 90,
+      "Sha256": "54115199B96A130CBA02147C47C0DEB43DCC9B9F08B5162BBA8642B34980AC63"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/pygments.css",
+      "Length": 4902,
+      "Sha256": "316DC87150077B0AB61A35963B169F935E873E2CE1A32F0FD7D2CCC34978FD5D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/qpdf.svg",
+      "Length": 1963,
+      "Sha256": "83AD32DEA3D103C6952BF72F419F030286371BFBF822909D6C4222D89452730C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/searchtools.js",
+      "Length": 22464,
+      "Sha256": "954625D140412A9D3D954D67E2E3AEC8F8BD18018CF7600B894298FB157C7780"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/_static/sphinx_highlight.js",
+      "Length": 5325,
+      "Sha256": "C551409F6BAE30D602D5B47676696803554E7CEAA458C1C6EB8367B9D2C4DD31"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/acknowledgement.html",
+      "Length": 7273,
+      "Sha256": "1D41DFA7101D449516334B430E7A14F4DE8B9C05D58EA2C1E3F91FB18DFCD907"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/cli.html",
+      "Length": 250810,
+      "Sha256": "3CEB9945A82398D7BFDBE0E3048E5D31DB186FAAC16709DDA7449D43A59D59DC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/contributing.html",
+      "Length": 18123,
+      "Sha256": "96EFF6C543FEDD37905182F6515CF3FB968115DAF6462414AAC227F88D2D0EE7"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/design.html",
+      "Length": 111311,
+      "Sha256": "EAC938D23B8BEB4622C0502083566DECA20C04235579F6F534199E7CB33DD5F6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/download.html",
+      "Length": 6942,
+      "Sha256": "7AA7D0CAF1B6E658F38603802190623DAB1BD5F56B13C2EA2F6575DCFAB6729F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/encryption.html",
+      "Length": 30976,
+      "Sha256": "D7EF066A0ACDA03C8847FEEC4FB7B48EA78739505EE2D9B318B2C65BFCED355E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/genindex.html",
+      "Length": 5499,
+      "Sha256": "B25FD2310C48258D7D7FB6394721364A80AAF3916619225683A4CC028D3B9099"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/index.html",
+      "Length": 18991,
+      "Sha256": "EE4A27BED2C8C52B78972AB51C2083BF481D2F68DE26F5F826AB00F5B13A99ED"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/inspection.html",
+      "Length": 10684,
+      "Sha256": "C9B9D552611ACAFD72502C712CD0642A8E004AB50D48AF3B2A85EB1900AD2460"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/installation.html",
+      "Length": 61526,
+      "Sha256": "ACF186995B076AFE6055D03B64AD6C1DA3A2D23E3DDA53A872D4EB86AD754FB8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/json.html",
+      "Length": 79321,
+      "Sha256": "C3A58E513C7EE5EA3DB3F1DAE4C084E9EF1999F2F3FBE3E0AFD22AAE1E89657E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/library.html",
+      "Length": 15054,
+      "Sha256": "DBECC596731D3AC1EB5846AE94A380DDBA184F90115A085A5B630AED07F49EF5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/license.html",
+      "Length": 6852,
+      "Sha256": "7557CB076B6EF80C0B19A13BEABF38A32FF441DEEA01AF49709E8E6422ACF484"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/linearization.html",
+      "Length": 19491,
+      "Sha256": "E1CF51B68A6380F6A70E28BA73741E1A817A25D73B77479EDAFF808BEE3BFA09"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/object-streams.html",
+      "Length": 18988,
+      "Sha256": "6D33FAB9B96FEA5A191957C8868A9330954A4BA071BF3407220CF3EF41FD4F79"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/objects.inv",
+      "Length": 4417,
+      "Sha256": "15190C1630A82D942E8E2A9A94955D016F8F9D9D00AD7524BDCB1B10F382174D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/overview.html",
+      "Length": 8631,
+      "Sha256": "8F02DBE1DB3BDC0F4A78597B6EFB34BC2F03E6D2E74455664E098738738A6022"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/packaging.html",
+      "Length": 16362,
+      "Sha256": "4E34E4F34647C4F7534EBB0F694D0F354704B1369071473D2B6F1FEA41EAB7E1"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/qdf.html",
+      "Length": 12703,
+      "Sha256": "4FD3C90B83F559D47BFBD8169B63D09A49909FB2696E30D2F99F54DDF279473A"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/qpdf-job.html",
+      "Length": 28458,
+      "Sha256": "1E5B48D5F9711D9E2C48CC87246EF096F236661389C8BA9FFE56C04DC78BB803"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/qpdf-options.html",
+      "Length": 33959,
+      "Sha256": "94186590B950A73E84C79B3C23724F10902C77406283CFA416C15D15C2DBC569"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/release-notes.html",
+      "Length": 296262,
+      "Sha256": "1CBE99310426400179D1B6D271A15095DC09AFB5DE7F9B43BEB3C6A6F03DBA05"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/search.html",
+      "Length": 5898,
+      "Sha256": "640E9882F683C5BFA323D181B66D4AA8054CEB3C5023D6875C2B020E18BC74DE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/searchindex.js",
+      "Length": 73048,
+      "Sha256": "200524CBB8CA90757572316260C2D71C9887A104FE9C5CE7B17DFCA7A55F6AE9"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-html/weak-crypto.html",
+      "Length": 19550,
+      "Sha256": "AE62D3E5DED744C9A0A5D984709EAC053D8007D68FBDBA67AA9AE32D25FABEC1"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/.buildinfo",
+      "Length": 231,
+      "Sha256": "792A4152B5957AF98EC20E19089EE74DEB967B885C5EAEECD64A2E94B0267A84"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/_sphinx_javascript_frameworks_compat.js",
+      "Length": 4289,
+      "Sha256": "480A2C7377252C14A11BCA4D3A49DFA16EA540A998FA637FAE0189AEE1B89113"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/base-stemmer.js",
+      "Length": 12250,
+      "Sha256": "EB67BEDBFA264BD8A2201EBE07C861ABBCBC56D7EAA28C53FF8B84F65CCD450F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/basic.css",
+      "Length": 14687,
+      "Sha256": "32BE6D1C8F99E8328DC360F8319B9ACEAE201281D5A337D2233A51B3E713FE79"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/badge_only.css",
+      "Length": 3329,
+      "Sha256": "F1399E4FC48C3FF17B5037D3512FCC451FB0ABC2C95B4B8D12AAB50CDD9D1D6F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/Roboto-Slab-Bold.woff",
+      "Length": 87624,
+      "Sha256": "9FEC87CADBE2413B255F1EC577573A83F1CA2E1C37AA023DBEBCD3A7B864636A"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/Roboto-Slab-Bold.woff2",
+      "Length": 67312,
+      "Sha256": "1A0C024DD1A267C52D5575469FFE8570D1E84164DE7D393CF3414BAFD17D7A0C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/Roboto-Slab-Regular.woff",
+      "Length": 86288,
+      "Sha256": "9F32630E2C0C5135BF1E86E36CB65B3932E4410644235BC2BD995E9C7F6FF117"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/Roboto-Slab-Regular.woff2",
+      "Length": 66444,
+      "Sha256": "874E42222856D7AF03B3F438D21D923A4280D47FE67C48510E2174A1579795EF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/fontawesome-webfont.eot",
+      "Length": 165742,
+      "Sha256": "7BFCAB6DB99D5CFBF1705CA0536DDC78585432CC5FA41BBD7AD0F009033B2979"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/fontawesome-webfont.svg",
+      "Length": 444379,
+      "Sha256": "AD6157926C1622BA4E1D03D478F1541368524BFC46F51E42FE0D945F7EF323E4"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/fontawesome-webfont.ttf",
+      "Length": 165548,
+      "Sha256": "AA58F33F239A0FB02F5C7A6C45C043D7A9AC9A093335806694ECD6D4EDC0D6A8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/fontawesome-webfont.woff",
+      "Length": 98024,
+      "Sha256": "BA0C59DEB5450F5CB41B3F93609EE2D0D995415877DDFA223E8A8A7533474F07"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/fontawesome-webfont.woff2",
+      "Length": 77160,
+      "Sha256": "2ADEFCBC041E7D18FCF2D417879DC5A09997AA64D675B7A3C4B6CE33DA13F3FE"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-bold-italic.woff",
+      "Length": 323344,
+      "Sha256": "980C8592E5488DF256192C999E92DB8FD302DB8CD8909B7FA266A684E37E45F8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-bold-italic.woff2",
+      "Length": 193308,
+      "Sha256": "C0916A33340D063F7B05679E08031E729D1888444706F04804705DA5966D895D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-bold.woff",
+      "Length": 309728,
+      "Sha256": "0E56B17D142EB366C8007031D14E34DA48C70B4A9D9A0CA492E696A7BAE45E1E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-bold.woff2",
+      "Length": 184912,
+      "Sha256": "AE88FC0D7A961832F809527D30BD3983A6866D42F66A56ADE23F543681594DB6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-normal-italic.woff",
+      "Length": 328412,
+      "Sha256": "26318A1467A5E5CAF10B04CFA942D079632560CD7A29CEC565FD1DC9F7EC5081"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-normal-italic.woff2",
+      "Length": 195704,
+      "Sha256": "4465765F2F6EDDCDAD34FFD7CAB559E56BC0E75E45E192F85E9562B0771481DC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-normal.woff",
+      "Length": 309192,
+      "Sha256": "5B9025DDA4D7688E3311B0C17EDDC501133B807DEF33EFFAEF6593843CF5416E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/fonts/lato-normal.woff2",
+      "Length": 182708,
+      "Sha256": "983B0CAF336E8542214FC17019A4FC5E0360864B92806CA14D55C1FC1C2C5A0F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/theme.css",
+      "Length": 137285,
+      "Sha256": "17C556BC5F2B93A5FB4AA22A2706DA52076F6D73F8EF4A6E1673DD4132A2AD68"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/css/wraptable.css",
+      "Length": 128,
+      "Sha256": "D7161D28B4F54A9CE25B4D4DAFF97D1D459E2859187ECF40377EA9DE089D7F2E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/doctools.js",
+      "Length": 4332,
+      "Sha256": "6B2524C2723CC6E06CBF056E0B2861D50BA8FDD082ECE13378BFB45D7A090528"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/documentation_options.js",
+      "Length": 335,
+      "Sha256": "C314FEF0C5690CE1D85AAD7AC5BF01D9830ACD4D9A09BF36BC76B44A56AF7F94"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/english-stemmer.js",
+      "Length": 30599,
+      "Sha256": "1F995807FDE5A820390FB9046E4813A7EB8F20A4684650F14FBDEB4C2AD7FFC5"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/file.png",
+      "Length": 286,
+      "Sha256": "5C4BC9A16AEBF38C4B950F59B8E501CA36495328CB9EB622218BCE9064A35E3E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bold.eot",
+      "Length": 256056,
+      "Sha256": "B91FC1CA55DF440DC11354B32A39B45DB663D24BB17B16DCB2E706330955B0D1"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bold.ttf",
+      "Length": 600856,
+      "Sha256": "F71F833C099F450606F8107B83EF208AE918C0EA00779466D45E9BE96B0BC7CC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bold.woff",
+      "Length": 309728,
+      "Sha256": "0E56B17D142EB366C8007031D14E34DA48C70B4A9D9A0CA492E696A7BAE45E1E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bold.woff2",
+      "Length": 184912,
+      "Sha256": "AE88FC0D7A961832F809527D30BD3983A6866D42F66A56ADE23F543681594DB6"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bolditalic.eot",
+      "Length": 266158,
+      "Sha256": "B3D585879A02F48C5D43D8F91D06B167E367A31934BB3B8147C0A90B5CA32BFC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bolditalic.ttf",
+      "Length": 622572,
+      "Sha256": "F98D040631714EABFFD0FFB747576674FA78C2910F6D9E3DC0C58481D03C1898"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bolditalic.woff",
+      "Length": 323344,
+      "Sha256": "980C8592E5488DF256192C999E92DB8FD302DB8CD8909B7FA266A684E37E45F8"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-bolditalic.woff2",
+      "Length": 193308,
+      "Sha256": "C0916A33340D063F7B05679E08031E729D1888444706F04804705DA5966D895D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-italic.eot",
+      "Length": 268604,
+      "Sha256": "BC24DBE04F5B2415678F978E7E2F630CC6610670D684E088E73AD29C439EAFE3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-italic.ttf",
+      "Length": 639388,
+      "Sha256": "12D825AF88EAFEA1CE3AA469F83C03ACAECD0D03F690F409C8643529F1205B4F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-italic.woff",
+      "Length": 328412,
+      "Sha256": "26318A1467A5E5CAF10B04CFA942D079632560CD7A29CEC565FD1DC9F7EC5081"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-italic.woff2",
+      "Length": 195704,
+      "Sha256": "4465765F2F6EDDCDAD34FFD7CAB559E56BC0E75E45E192F85E9562B0771481DC"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-regular.eot",
+      "Length": 253461,
+      "Sha256": "E735410675EACC363B257112F39EB819A854B03077D7B1F0CAA6E7660FFBD8B3"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-regular.ttf",
+      "Length": 607720,
+      "Sha256": "089AB6D4A57E0E6C4DD3B681B6FD50A5184F1B902429D35E1227E52D6CCAD1BD"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-regular.woff",
+      "Length": 309192,
+      "Sha256": "5B9025DDA4D7688E3311B0C17EDDC501133B807DEF33EFFAEF6593843CF5416E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/Lato/lato-regular.woff2",
+      "Length": 182708,
+      "Sha256": "983B0CAF336E8542214FC17019A4FC5E0360864B92806CA14D55C1FC1C2C5A0F"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.eot",
+      "Length": 79520,
+      "Sha256": "4438991A12FF951CC8D0E83348EC06D9F910591B1B014C476E9595D4DA099E48"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.ttf",
+      "Length": 170616,
+      "Sha256": "BA12D2EAB1FA765B6B05398FA7E047DD76293F0C051CE57A8F7B0C591C14D42B"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.woff",
+      "Length": 87624,
+      "Sha256": "9FEC87CADBE2413B255F1EC577573A83F1CA2E1C37AA023DBEBCD3A7B864636A"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-bold.woff2",
+      "Length": 67312,
+      "Sha256": "1A0C024DD1A267C52D5575469FFE8570D1E84164DE7D393CF3414BAFD17D7A0C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.eot",
+      "Length": 78331,
+      "Sha256": "B3809B71D417C6C225E77A55880AA7915B4E4B4F77A5E2D243F3563731E7F55C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.ttf",
+      "Length": 169064,
+      "Sha256": "13AA5F54C6F2FA2E388FE0E675CDBCC6A81F6270A8BF9C03A5DF8AF9CB022810"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.woff",
+      "Length": 86288,
+      "Sha256": "9F32630E2C0C5135BF1E86E36CB65B3932E4410644235BC2BD995E9C7F6FF117"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/fonts/RobotoSlab/roboto-slab-v7-regular.woff2",
+      "Length": 66444,
+      "Sha256": "874E42222856D7AF03B3F438D21D923A4280D47FE67C48510E2174A1579795EF"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/jquery.js",
+      "Length": 89501,
+      "Sha256": "FF1523FB7389539C84C65ABA19260648793BB4F5E29329D2EE8804BC37A3FE6E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/js/badge_only.js",
+      "Length": 934,
+      "Sha256": "F0A4808D04C4D55378751AC096A8376B64B1A704C82584B0EE590212CF413013"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/js/theme.js",
+      "Length": 5023,
+      "Sha256": "536AD2D746E944C5570CC15BADAECCC3C0582A1B66E45511FE4EDCE32B6DA510"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/js/versions.js",
+      "Length": 6978,
+      "Sha256": "0998CC5239113CB6009AB1730E24EDE85673759810EE8FB1E2F912305282A4AA"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/language_data.js",
+      "Length": 13589,
+      "Sha256": "AF1C48FC5B0E0E9423CAC068D55CDF22F541648709AE4B9190EE8AA9C2B08150"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/minus.png",
+      "Length": 90,
+      "Sha256": "47E7FC50DB3699F1CA41CE9A2FFA202C00C5D1D5180C55F62BA859B1BD6CC008"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/plus.png",
+      "Length": 90,
+      "Sha256": "54115199B96A130CBA02147C47C0DEB43DCC9B9F08B5162BBA8642B34980AC63"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/pygments.css",
+      "Length": 4902,
+      "Sha256": "316DC87150077B0AB61A35963B169F935E873E2CE1A32F0FD7D2CCC34978FD5D"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/qpdf.svg",
+      "Length": 1963,
+      "Sha256": "83AD32DEA3D103C6952BF72F419F030286371BFBF822909D6C4222D89452730C"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/searchtools.js",
+      "Length": 22464,
+      "Sha256": "954625D140412A9D3D954D67E2E3AEC8F8BD18018CF7600B894298FB157C7780"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/_static/sphinx_highlight.js",
+      "Length": 5325,
+      "Sha256": "C551409F6BAE30D602D5B47676696803554E7CEAA458C1C6EB8367B9D2C4DD31"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/index.html",
+      "Length": 891849,
+      "Sha256": "0CB8D8C519850B1EF486EA639C281CCBBC99D81A424C76E98B9C55A307676A8E"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/manual-single-page-html/objects.inv",
+      "Length": 4429,
+      "Sha256": "648B1860B929A91381F737B03849B387930812ADA46F8AFDF711CF0623598779"
+    },
+    {
+      "RelativePath": "qpdf-12.4.2-msvc64/share/doc/qpdf/qpdf-manual.pdf",
+      "Length": 758685,
+      "Sha256": "4B5C1DC13B95976A0C46E3F8C1344DE358C909C67541D0CCAF9E60615A4738BA"
+    }
+  ],
+  "Enabled": false,
+  "AvailabilityReason": "Engine payload verified; sandbox integration and PDF runtime acceptance pending",
+  "RuntimeVerified": false
+}

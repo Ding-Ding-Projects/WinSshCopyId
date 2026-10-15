@@ -1,0 +1,35 @@
+{
+  "Id": "pandoc",
+  "Version": "3.12.1",
+  "Architecture": "x64",
+  "Source": "https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-windows-x86_64.zip",
+  "ArchiveBytes": 42154914,
+  "ArchiveSha256": "6EF431CB20B2C24A0371FC19200DC49D452BE54B1B5C9239F3462841EF53E587",
+  "License": "GPL-2.0-or-later; preserve packaged license and comply with redistribution obligations",
+  "LicenseSource": "https://github.com/jgm/pandoc/blob/3.12.1/COPYING.md",
+  "Members": [
+    {
+      "RelativePath": "pandoc-3.12.1/COPYING.rtf",
+      "Length": 20757,
+      "Sha256": "B2E44B72220D84E7EC7D5C7ED2B76E42B2C239AE1F179A2A2A9A34D1E40F315E"
+    },
+    {
+      "RelativePath": "pandoc-3.12.1/COPYRIGHT.txt",
+      "Length": 9823,
+      "Sha256": "43575D901FD50CC06F49042B82F114667A82C17D63B429E99635AE9430C977C4"
+    },
+    {
+      "RelativePath": "pandoc-3.12.1/MANUAL.html",
+      "Length": 431883,
+      "Sha256": "8342853BA03E60D79411839929FDD00007D6358D8019F326CB0C85DD4CEABE56"
+    },
+    {
+      "RelativePath": "pandoc-3.12.1/pandoc.exe",
+      "Length": 235555080,
+      "Sha256": "EB392D2661D35ABC597A6288A548CC82F6291B179DA28B24BC5A5D06C742D35D"
+    }
+  ],
+  "Enabled": false,
+  "AvailabilityReason": "Payload verified; sandbox integration and document conversion runtime acceptance pending",
+  "RuntimeVerified": false
+}

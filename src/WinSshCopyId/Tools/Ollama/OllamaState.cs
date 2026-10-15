@@ -102,16 +102,17 @@ public sealed class OllamaPullQueue(OllamaClient client, OllamaStateStore store)
     }
     public Task<OllamaLocalState> RetryAsync(Guid id, CancellationToken cancellationToken = default) => store.UpdateAsync(state => state with
     { Pulls = state.Pulls.Select(p => p.Id == id && p.State is OllamaPullState.Failed or OllamaPullState.Cancelled or OllamaPullState.Interrupted ? p with { State = OllamaPullState.Queued, Detail = null } : p).ToImmutableArray() }, cancellationToken);
-    public async Task RunAsync(IProgress<OllamaPullItem>? progress = null, CancellationToken cancellationToken = default)
+    public Task RunAsync(IProgress<OllamaPullItem>? progress = null, CancellationToken cancellationToken = default) => RunAsync(1, progress, cancellationToken);
+    public async Task RunAsync(int maximumParallelism, IProgress<OllamaPullItem>? progress = null, CancellationToken cancellationToken = default)
     {
+        if (maximumParallelism is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(maximumParallelism));
         await runner.WaitAsync(cancellationToken);
         try
         {
             var models = await client.GetModelsAsync(cancellationToken);
             await store.UpdateAsync(state => state with { Pulls = state.Pulls.Select(p => p.State == OllamaPullState.Pulling ? p with { State = OllamaPullState.Interrupted, Detail = "Previous operation ended before its outcome was recorded. Retry to reconcile." } : p).ToImmutableArray() }, cancellationToken);
             var state = await store.LoadAsync(cancellationToken);
-            foreach (var pending in state.Pulls.Where(p => p.State == OllamaPullState.Queued))
-            {
+            await Parallel.ForEachAsync(state.Pulls.Where(p => p.State == OllamaPullState.Queued), new ParallelOptions { MaxDegreeOfParallelism = maximumParallelism, CancellationToken = cancellationToken }, async (pending, itemToken) => {
                 cancellationToken.ThrowIfCancellationRequested();
                 var item = pending;
                 try
@@ -127,8 +128,8 @@ public sealed class OllamaPullQueue(OllamaClient client, OllamaStateStore store)
                             progress?.Report(item);
                         }
                         // A completed stream alone is insufficient: verify the exact installed tag.
-                        models = await client.GetModelsAsync(cancellationToken);
-                        item = item with { State = models.Any(m => m.Name == item.Model) ? OllamaPullState.Pulled : OllamaPullState.Failed, Detail = models.Any(m => m.Name == item.Model) ? "Exact installed tag verified." : "Pull ended but exact installed tag was not found." };
+                        var verified = await client.GetModelsAsync(itemToken);
+                        item = item with { State = verified.Any(m => m.Name == item.Model) ? OllamaPullState.Pulled : OllamaPullState.Failed, Detail = verified.Any(m => m.Name == item.Model) ? "Exact installed tag verified." : "Pull ended but exact installed tag was not found." };
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -140,7 +141,7 @@ public sealed class OllamaPullQueue(OllamaClient client, OllamaStateStore store)
                 { item = item with { State = OllamaPullState.Failed, Detail = "Local pull failed or timed out. Inspect runtime health, storage and connectivity before retrying." }; }
                 await SaveAsync(item, cancellationToken);
                 progress?.Report(item);
-            }
+            });
         }
         finally { runner.Release(); }
     }
