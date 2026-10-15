@@ -33,19 +33,30 @@ function Get-ArchiveInventory([string]$Zip) {
     return $entries
   } finally {$archive.Dispose()}
 }
-function Test-Tree([string]$Directory,[string]$Zip) {
-  if(!(Test-Path -LiteralPath $Directory -PathType Container)) {return $false}
+function Test-Tree([string]$Directory,[string]$Zip,[switch]$Diagnose) {
+  if(!(Test-Path -LiteralPath $Directory -PathType Container)) {if($Diagnose){Write-Host 'Inventory mismatch: extraction directory is missing.'};return $false}
   try {
     $null=Assert-Contained $Directory $tools
     $expected=@(Get-ArchiveInventory $Zip)
     $actual=@(Get-ChildItem -LiteralPath $Directory -Recurse -File -Force)
-    if($actual.Count -ne $expected.Count) {return $false}
+    $valid=$true
+    $members=@{}
+    foreach($item in $actual) {$members[$item.FullName.Substring($Directory.TrimEnd('\').Length+1).Replace('/','\')]=$item}
+    $expectedNames=@{}
     foreach($entry in $expected) {
       $path=Assert-Contained (Join-Path $Directory $entry.path) $Directory
-      if(!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -ne $entry.bytes -or (Get-FileHash $path -Algorithm SHA256).Hash -ne $entry.sha256) {return $false}
+      $relative=$path.Substring($Directory.TrimEnd('\').Length+1).Replace('/','\')
+      if($expectedNames.ContainsKey($relative)) {throw 'Archive contains duplicate logical member paths.'}
+      $expectedNames[$relative]=$true
+      if(!$members.ContainsKey($relative)) {$valid=$false;if($Diagnose){Write-Host "Inventory missing member: $relative"};continue}
+      $item=Get-Item -LiteralPath $path -Force
+      if($item.Length -ne $entry.bytes) {$valid=$false;if($Diagnose){Write-Host "Inventory length mismatch: $relative expected=$($entry.bytes) actual=$($item.Length)"};continue}
+      if((Get-FileHash $path -Algorithm SHA256).Hash -ne $entry.sha256) {$valid=$false;if($Diagnose){Write-Host "Inventory hash mismatch: $relative"}}
     }
-    return $true
-  } catch {return $false}
+    foreach($relative in $members.Keys) {if(!$expectedNames.ContainsKey($relative)) {$valid=$false;if($Diagnose){Write-Host "Inventory extra member: $relative"}}}
+    if($actual.Count -ne $expected.Count) {$valid=$false;if($Diagnose){Write-Host "Inventory member count: expected=$($expected.Count) actual=$($actual.Count)"}}
+    return $valid
+  } catch {if($Diagnose){Write-Host "Inventory inspection failed: $($_.Exception.GetType().Name)"};return $false}
 }
 function Write-Journal([string]$Path,$State) {
   $temp=Assert-Contained "$Path.$PID.tmp" $tools
@@ -74,7 +85,7 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
   $stage=Assert-Contained "$Directory.stage.$PID.$([guid]::NewGuid().ToString('N'))" $tools
   $null=Get-ArchiveInventory $Zip
   Expand-Archive -LiteralPath $Zip -DestinationPath $stage
-  if(!(Test-Path (Join-Path $stage $Required)) -or !(Test-Tree $stage $Zip)) {throw 'Extracted dependency verification failed.'}
+  if(!(Test-Path (Join-Path $stage $Required)) -or !(Test-Tree $stage $Zip -Diagnose)) {throw 'Extracted dependency verification failed.'}
   $state=@{active=$Directory;backup=$backup;stage=$stage;archiveSha256=(Get-FileHash $Zip -Algorithm SHA256).Hash;phase='staged'}
   Write-Journal $journal $state
   if(Test-Path -LiteralPath $backup) {Move-Item -LiteralPath $backup -Destination (Assert-Contained "$backup.retained.$([guid]::NewGuid().ToString('N'))" $tools)}
@@ -82,7 +93,7 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
   $state.phase='backed-up';Write-Journal $journal $state
   try {
     Move-Item -LiteralPath $stage -Destination $Directory
-    if(!(Test-Tree $Directory $Zip)) {throw 'Activated dependency failed verification.'}
+    if(!(Test-Tree $Directory $Zip -Diagnose)) {throw 'Activated dependency failed verification.'}
     $state.phase='activated';Write-Journal $journal $state
     Remove-Item -LiteralPath $journal -Force
   } catch {
@@ -93,3 +104,4 @@ function Expand-Verified([string]$Zip,[string]$Directory,[string]$Required) {
     throw
   }
 }
+

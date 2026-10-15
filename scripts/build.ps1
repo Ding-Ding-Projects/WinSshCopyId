@@ -42,6 +42,7 @@ function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
   } finally {if(Test-Path $temp) {Remove-Item -LiteralPath $temp -Force}}
 }
 . (Join-Path $PSScriptRoot 'bootstrap.ps1')
+. (Join-Path $PSScriptRoot 'build-receipt.ps1')
 try {
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
@@ -66,11 +67,22 @@ try {
   $source=Get-Source
   $manifestHash=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash
   $publish=Resolve-Output $m.publishDirectory @('artifacts/publish')
-  if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
-  New-Item -ItemType Directory -Force $publish | Out-Null
   $version=$m.version
   if($env:BUILD_VERSION) {$version=$env:BUILD_VERSION}
   if($version -notmatch '^\d+\.\d+\.\d+$') {throw 'BUILD_VERSION must have three numeric components.'}
+  $sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();$indexTree=(& git write-tree).Trim()
+  $receiptPath=Join-Path $root 'artifacts/build-receipt.json'
+  if($Action -eq 'installer') {
+    if(!(Test-BuildReceipt $receiptPath $publish $source $manifestHash $version $m.runtime $sourceTree $indexTree)) {
+      Write-Host 'No valid unchanged-source build receipt; invoking root build.bat /s.'
+      $buildLock.Dispose();Remove-Variable buildLock
+      Invoke-Checked (Join-Path $root 'build.bat') @('/s')
+      $buildLock=[IO.File]::Open((Join-Path $tools 'producer.lock'),'OpenOrCreate','ReadWrite','None')
+    } else {Write-Host 'Reusing verified unchanged-source build receipt; compilation is not repeated.'}
+    if((Get-Source) -ne $source -or !(Test-BuildReceipt $receiptPath $publish $source $manifestHash $version $m.runtime $sourceTree $indexTree)) {throw 'Root build receipt did not validate for installer source and payload.'}
+  } else {
+    if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
+    New-Item -ItemType Directory -Force $publish | Out-Null
   Invoke-Checked $dotnet @('publish',$m.project,'-c','Release','-r',$m.runtime,'--self-contained','true','-p:Platform=x64','-p:WindowsAppSDKSelfContained=true','-p:WindowsPackageType=None',"-p:Version=$version",'-o',$publish)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
   $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
@@ -81,9 +93,11 @@ try {
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   $payload=@(Get-ChildItem $publish -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
-  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
+
+  }
   if($Action -eq 'installer') {
     $releases=Resolve-Output $m.releaseDirectory @('artifacts/releases')
     if(Test-Path $releases) {Remove-Item -LiteralPath $releases -Recurse -Force}
@@ -107,6 +121,7 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
 
 
 
