@@ -8,6 +8,8 @@ The server services expose immutable instance and target records, an atomic loca
 
 The snapshot deliberately reports incomplete coverage: Java metadata entries do not prove that every server distribution exists. Historical Bedrock packages, third-party flavors, plugins, mods, packs and version-specific setting descriptors require additional source and runtime acceptance. No default list is represented as exhaustive.
 
+`JavaServerProvisioner.CreateAsync` turns one selected resolved official Java distribution into a new instance directory only after explicit EULA consent. It downloads from the admitted official origin with bounded duration and exact expected length, verifies the official metadata SHA-1 and computes a local SHA-256, writes explicit EULA/online-mode/port settings, and atomically promotes its own staging directory. Existing destination directories are never replaced and no world is migrated. It returns the exact Java-major requirement when known; acquiring/admitting that Java runtime is separate and it never launches a server. Fake-byte tests prove exact transfer, existing-directory preservation and missing-consent rejection without obtaining a real distribution.
+
 ## Configuration and persistence
 
 `ServerProperties` preserves comments, unknown properties, ordering and original newline style while applying typed validated port changes. It rejects line injection. This is literal `key=value` support, not a full Java-properties escape/continuation implementation. `ServerRegistry` uses schema-versioned immutable records, duplicate identity checks, a 16 MiB limit and temporary-file promotion. Instance extension values survive a round trip. Private instance state belongs under the user's application-data directory, never the repository.

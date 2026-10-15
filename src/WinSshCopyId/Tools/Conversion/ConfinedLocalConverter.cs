@@ -18,6 +18,7 @@ public sealed class ConfinedLocalConverter
             throw new ArgumentException("A complete pinned worker package inventory is required.");
         foreach (var (name, hash) in inventory)
             if (Path.IsPathRooted(name) || name.Contains('\\') || name.Split('/').Any(x => x is ".." or "." or "")
+                || name.Split('/').Any(x => x.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 || hash.Length != 64 || !hash.All(Uri.IsHexDigit)) throw new ArgumentException("Invalid packaged worker inventory.");
     }
 
@@ -106,14 +107,19 @@ public sealed class ConfinedLocalConverter
         Directory.CreateDirectory(stage);
         try
         {
+            long packageBytes = 0;
             foreach (var (relative, expected) in inventory)
             {
                 token.ThrowIfCancellationRequested();
                 var original = Path.Combine(packageDirectory, relative.Replace('/', Path.DirectorySeparatorChar));
                 RejectReparse(original);
+                await using var source = new FileStream(original, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+                if (source.Length > 256L * 1024 * 1024 || (packageBytes = checked(packageBytes + source.Length)) > 512L * 1024 * 1024)
+                    throw new InvalidDataException("Worker package exceeds its staging byte limit.");
                 var target = Path.Combine(stage, "package", relative.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(original, target, false);
+                await using (var destination = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+                    await source.CopyToAsync(destination, 81920, token);
                 await using var copy = File.OpenRead(target);
                 if (!Convert.ToHexString(await SHA256.HashDataAsync(copy, token)).Equals(expected, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("Pinned package hash mismatch.");

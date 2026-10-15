@@ -12,10 +12,12 @@ function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
 $root=Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $m=Get-Content (Join-Path $root 'build/manifest.json') -Raw | ConvertFrom-Json
+if($m.packageId -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]+$' -or $m.packageId -eq $m.product -or $m.product -ne 'WinSshCopyId' -or $m.executable -ne 'WinSshCopyId.exe') {throw 'Installer package identity must remain distinct from persistent application data and executable identity.'}
 $silent=$env:SILENT -eq '1'
 $run=$env:RUN_AFTER_BUILD -eq '1'
+$site=$false
 foreach($option in $Options) {
-  switch($option) { '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
+  switch($option) { '--site' {$site=$true} '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
 }
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 function Invoke-Checked([string]$File,[string[]]$Arguments) {
@@ -30,14 +32,14 @@ function Get-Source {
 }
 function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
   $expected=$Spec.($Algorithm.ToLowerInvariant())
-  if((Test-Path $Destination) -and (Get-FileHash $Destination -Algorithm $Algorithm).Hash -eq $expected) {return}
+  if((Test-Path $Destination) -and (Get-FileHash -LiteralPath $Destination -Algorithm $Algorithm).Hash -eq $expected) {return}
   $temp="$Destination.$PID.$([guid]::NewGuid().ToString('N')).download"
   try {
     Write-Host "Downloading pinned dependency from $($Spec.url)"
     if(Get-Command curl.exe -ErrorAction SilentlyContinue) {
       Invoke-Checked 'curl.exe' @('--fail','--location','--silent','--show-error','--connect-timeout','30','--max-time','900','--output',$temp,$Spec.url)
     } else {Invoke-WebRequest -UseBasicParsing -TimeoutSec 900 -Uri $Spec.url -OutFile $temp}
-    if((Get-FileHash $temp -Algorithm $Algorithm).Hash -ne $expected) {throw "Download digest mismatch: $($Spec.url)"}
+    if((Get-FileHash -LiteralPath $temp -Algorithm $Algorithm).Hash -ne $expected) {throw "Download digest mismatch: $($Spec.url)"}
     Move-Item -LiteralPath $temp -Destination $Destination -Force
   } finally {if(Test-Path $temp) {Remove-Item -LiteralPath $temp -Force}}
 }
@@ -47,6 +49,7 @@ try {
   $buildStartedUtc=[DateTime]::UtcNow.ToString('o')
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
+  if($site) {if($Action -ne 'build') {throw '--site is supported only by root build.bat.'};. (Join-Path $PSScriptRoot 'build-site.ps1');exit 0}
   Write-Host 'Using project-local portable tooling; administrator rights are not required.'
   $tools=Assert-Contained (Join-Path $root '.tools') $root; New-Item -ItemType Directory -Force $tools | Out-Null
   $lock=[IO.File]::Open((Join-Path $tools 'bootstrap.lock'),'OpenOrCreate','ReadWrite','None')
@@ -68,7 +71,7 @@ try {
   if($Action -eq 'dependencies') {exit 0}
   $buildLock=[IO.File]::Open((Join-Path $tools 'producer.lock'),'OpenOrCreate','ReadWrite','None')
   $source=Get-Source
-  $manifestHash=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash
+  $manifestHash=(Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash
   $publish=Resolve-Output $m.publishDirectory @('artifacts/publish')
   $version=$m.version
   if($env:BUILD_VERSION) {$version=$env:BUILD_VERSION}
@@ -92,7 +95,7 @@ try {
   New-Item -ItemType Directory -Force $worker | Out-Null
   Invoke-Checked $dotnet @('publish',$m.worker.project,'-c','Release','-r',$m.runtime,'--self-contained','true',"-p:Version=$version",'-o',$worker)
   foreach($name in @($m.worker.executable,'coreclr.dll','hostfxr.dll')) {if(!(Test-Path -LiteralPath (Join-Path $worker $name) -PathType Leaf)) {throw "Worker payload missing: $name"}}
-  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
   @{sourceCommit=$source;runtime=$m.runtime;members=$workerMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.worker.manifest)
   $gitPayload=Assert-Contained (Join-Path $publish $m.mingit.directory) $publish
   New-Item -ItemType Directory -Force $gitPayload | Out-Null
@@ -100,19 +103,19 @@ try {
   if(!(Test-Tree $gitPayload (Join-Path $tools 'mingit.zip') -Diagnose -OwnerRoot $publish)) {throw 'Bundled MinGit differs from its pinned archive.'}
   if(!(Test-Path -LiteralPath (Join-Path $gitPayload $m.mingit.license))) {throw 'Bundled MinGit license is missing.'}
   Invoke-Checked (Join-Path $gitPayload $m.mingit.executable) @('--version')
-  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
   @{sourceCommit=$source;runtime=$m.runtime;version=$m.mingit.version;executable=$m.mingit.executable;license=$m.mingit.license;sourceUrl=$m.mingit.sourceUrl;archiveSha256=$m.mingit.sha256;members=$gitMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.mingit.manifest)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
   $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
   Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
-  $updaterHash=(Get-FileHash $updaterSource -Algorithm SHA256).Hash
-  if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
-  @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
+  $updaterHash=(Get-FileHash -LiteralPath $updaterSource -Algorithm SHA256).Hash
+  if((Get-FileHash -LiteralPath (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
+  @{updateFeed=$m.updateFeed;version=$version;packageId=$m.packageId} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
   @{sourceCommit=$source;version=$version;builtAtUtc=$buildStartedUtc;runtime=$m.runtime;manifestSha256=$manifestHash} | ConvertTo-Json | Set-Content (Join-Path $publish 'build-info.json')
-  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
-  if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
-  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
+  if((Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
+  $receipt=@{schemaVersion=1;packageId=$m.packageId;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
 
@@ -122,17 +125,17 @@ try {
     if(Test-Path $releases) {Remove-Item -LiteralPath $releases -Recurse -Force}
     New-Item -ItemType Directory -Force $releases | Out-Null
     $packages=Resolve-Output 'artifacts/packages' @('artifacts/packages'); New-Item -ItemType Directory -Force $packages | Out-Null
-    Invoke-Checked (Join-Path $tools 'nuget.exe') @('pack','packaging/WinSshCopyId.nuspec','-Version',$version,'-Properties',"payload=$publish",'-OutputDirectory',$packages,'-NoDefaultExcludes','-NonInteractive')
-    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.com') @('--releasify',(Join-Path $packages "WinSshCopyId.$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
-    foreach($name in @('Setup.exe','RELEASES',"WinSshCopyId-$version-full.nupkg")) {
+    Invoke-Checked (Join-Path $tools 'nuget.exe') @('pack','packaging/WinSshCopyId.nuspec','-Version',$version,'-Properties',"payload=$publish;packageId=$($m.packageId)",'-OutputDirectory',$packages,'-NoDefaultExcludes','-NonInteractive')
+    Invoke-Checked (Join-Path $tools 'squirrel/tools/Squirrel.com') @('--releasify',(Join-Path $packages "$($m.packageId).$version.nupkg"),'--releaseDir',$releases,'--no-msi','--no-delta')
+    foreach($name in @('Setup.exe','RELEASES',"$($m.packageId)-$version-full.nupkg")) {
       $path=Join-Path $releases $name
       if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Missing installer output: $name"}
     }
     $setup=Join-Path $releases 'Setup.exe'
     if((Get-AuthenticodeSignature $setup).Status -ne 'NotSigned') {throw 'Expected an unsigned Squirrel setup executable.'}
-    if((Get-Source) -ne $source -or (Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Source or manifest changed during packaging.'}
-    $assets=@(Get-ChildItem $releases -File | ForEach-Object { @{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash} })
-    @{schemaVersion=1;sourceCommit=$source;version=$version;manifestSha256=$manifestHash;unsigned=$true;assets=$assets} | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/installer-receipt.json'
+    if((Get-Source) -ne $source -or (Get-FileHash -LiteralPath 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Source or manifest changed during packaging.'}
+    $assets=@(Get-ChildItem $releases -File | ForEach-Object { @{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash} })
+    @{schemaVersion=1;packageId=$m.packageId;sourceCommit=$source;version=$version;manifestSha256=$manifestHash;unsigned=$true;assets=$assets} | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/installer-receipt.json'
     $assets | ForEach-Object {Write-Host "$($_.name) $($_.bytes) bytes SHA256 $($_.sha256)"}
     Write-Host 'Genuine unsigned Squirrel.Windows installer produced. Installation and runtime verification are separate.'
   }
@@ -140,6 +143,9 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
+
+
 
 
 

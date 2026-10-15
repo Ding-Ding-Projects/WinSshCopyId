@@ -5,6 +5,7 @@
 - [x] Add pinned root build, dependency and genuine unsigned Squirrel packaging entrypoints.
 - [x] Exercise the root build and installer entrypoints on the current Windows host.
 - [ ] Verify the integrated current source on standard hosted Windows 2022 runners.
+  Local reproduction and literal-path archive hashing repair are verified; hosted confirmation is pending.
 - [ ] Verify current-host installation, upgrade, cancellation, rollback and offline startup.
 - [ ] Publish and independently verify a normal release and all expected downloads.
 - [ ] Implement staged automatic updates with explicit application restart.
@@ -24,6 +25,7 @@
 - [ ] Complete tabs, groups, independent searches and the full regular-expression workbench.
 - [ ] Complete element appearance, locks, authenticator, protected history and exports.
 - [ ] Complete converter execution, packaged adapters and isolated worker verification.
+  Seven managed adapter fixtures passed real AppContainer execution; external engines and GUI integration remain incomplete.
 - [ ] Complete local model installation, catalog, chat, downloads and process management.
 - [ ] Complete server discovery, rich configuration and all four execution targets.
 - [ ] Integrate truthful notification and status reporting.
