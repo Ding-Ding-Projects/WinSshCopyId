@@ -6,6 +6,29 @@ using WinSshCopyId.Tools.Servers;
 using WinSshCopyId.Tools.Conversion;
 using WinSshCopyId.Tools.Ollama;
 
+if (args.Length == 3 && args[0] == "--verify-ollama-signature")
+{
+    using var manifest = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(args[1]));
+    var signer = manifest.RootElement.GetProperty("SignatureObservation");
+    if (!await OllamaPublisherVerifier.VerifyAsync(Path.GetFullPath(args[2]), signer.GetProperty("Subject").GetString()!, signer.GetProperty("Thumbprint").GetString()!))
+        throw new InvalidDataException("Official payload signature or exact signer pin did not verify.");
+    Console.WriteLine("PASS: official Ollama payload native Authenticode trust and exact signer pin verified; executable was not launched.");
+    return;
+}
+if (args.Length == 3 && args[0] == "--verify-confined-worker")
+{
+    var confined = await ConfinedLocalConverter.CreateForPackageVerificationOnlyAsync(args[1]);
+    var receipt = await confined.VerifyAdapterAsync(args[2]);
+    if (confined.AvailableAdapters.All(x => x.Id != args[2])) throw new InvalidDataException("Confined receipt did not enable its verified adapter.");
+    Console.WriteLine("PASS: actual confined worker adapter " + receipt.AdapterId + "; executable SHA-256 " + receipt.ExecutableSha256 + "; output SHA-256 " + receipt.OutputSha256);
+    return;
+}
+if (File.Exists(Path.Combine(Environment.CurrentDirectory, ".fake-server-fixture")))
+{
+    Console.WriteLine("fixture-ready");
+    while (await Console.In.ReadLineAsync() is { } line) if (line == "stop") return;
+    return;
+}
 var completed = 0;
 void Check(bool condition, string detail) { if (!condition) throw new Exception(detail); completed++; }
 async Task Reject(Func<Task> action, string detail)
@@ -14,6 +37,23 @@ async Task Reject(Func<Task> action, string detail)
     { completed++; return; }
     throw new Exception(detail);
 }
+static int FindDualProtocolPort()
+{
+    for (var attempt = 0; attempt < 64; attempt++)
+    {
+        var candidate = 12000 + attempt * 431;
+        var tcp = new System.Net.Sockets.TcpListener(IPAddress.Loopback, candidate);
+        try
+        {
+            using var udp = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, candidate));
+            tcp.Start(); return candidate;
+        }
+        catch (System.Net.Sockets.SocketException) { }
+        finally { tcp.Stop(); }
+    }
+    throw new IOException("No dual-protocol temporary test port was available after bounded discovery.");
+}
+
 var root = Path.Combine(Path.GetTempPath(), "WinSshCopyId-tools-tests-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try
@@ -73,7 +113,78 @@ try
     Check(!OllamaStateStore.ExportRedacted(chat).Contains("private content", StringComparison.Ordinal), "Export exposed local model content.");
     Check(OllamaHardwareFit.Unknown.Verdict == "Unknown" && OllamaCatalogSnapshot.Unavailable.Completeness == OllamaCatalogCompleteness.Unavailable, "Missing hardware or catalog evidence became a positive claim.");
     await Reject(() => ollamaStore.DeleteConversationAsync(chat.Id, false), "Unconfirmed local history deletion accepted.");
-    Console.WriteLine($"PASS: {completed} local tool assertions; no server process or service launched.");
+    var fixtureRoot = Path.Combine(root, "process-fixture"); Directory.CreateDirectory(fixtureRoot);
+    await File.WriteAllTextAsync(Path.Combine(fixtureRoot, ".fake-server-fixture"), "Bounded test child only");
+    var executablePath = Environment.ProcessPath!;
+    var executableHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(executablePath)));
+    var freePort = FindDualProtocolPort();
+    var fixture = instance with { Id = Guid.NewGuid(), EulaAccepted = true, Port = freePort,
+        Target = new(ServerTargetKind.LocalProcess, fixtureRoot),
+        Distribution = new("fixture", ServerEdition.Bedrock, "test", "test", ServerCatalogue.JavaManifest,
+            executablePath, executableHash, null, null, null) };
+    await using (var adapter = new ServerProcessAdapter())
+    {
+        var started = await adapter.StartAsync(fixture, new(executablePath, executableHash));
+        Check(started.ProcessId != Environment.ProcessId && adapter.Observe(fixture.Id).State == ServerObservedState.Running, "Owned fixture process was not started.");
+        var stoppedFixture = await adapter.StopAsync(fixture.Id, TimeSpan.FromSeconds(10));
+        Check(stoppedFixture.Exited && stoppedFixture.ExitCode == 0, "Owned fixture did not stop through stdin.");
+        Check(adapter.Observe(fixture.Id).State == ServerObservedState.Unknown, "Stopped fixture remained adopted.");
+    }
+    completed += await OllamaTests.RunAsync();
+    var imageDigest = "test/server@sha256:" + new string('a', 64);
+    var dockerInstance = instance with { Id = Guid.NewGuid(), EulaAccepted = true, Port = freePort,
+        Target = new(ServerTargetKind.LocalDocker, source), Distribution = instance.Distribution with { ContainerImageDigest = imageDigest } };
+    var dockerExecutor = new FakeDocker(dockerInstance.Id, imageDigest);
+    var dockerAdapter = new ServerDockerAdapter(dockerExecutor, Path.Combine(root, "docker.exe"));
+    var container = await dockerAdapter.StartAsync(dockerInstance, new(imageDigest, "/usr/bin/java", ["-jar", "/data/server.jar"], true));
+    Check(container.State.Contains("Started") && (await dockerAdapter.ObserveAsync(dockerInstance)).State == ServerObservedState.Running, "Typed Docker lifecycle failed.");
+    Check((await dockerAdapter.StopAsync(dockerInstance)).Exited, "Typed Docker stop failed.");
+    Check(dockerExecutor.Commands.All(c => !c.Arguments.Contains("pull")) && dockerExecutor.Commands.Any(c => c.Arguments.Contains("never")), "Docker image was implicitly pulled.");
+    var sshAdapter = new ServerSshAdapter(new WrongHostTransport());
+    await Reject(() => sshAdapter.ExecuteAsync(remote with { Target = remote.Target with { ApprovedHostKeySha256 = "SHA256:approved" } }, ServerOperation.Discover), "Wrong remote host receipt accepted.");
+    var fixturePayload = Encoding.UTF8.GetBytes("fixture executable bytes; never executable");
+    var fixtureArchive = Path.Combine(root, "fixture-payload.zip");
+    using (var zip = System.IO.Compression.ZipFile.Open(fixtureArchive, System.IO.Compression.ZipArchiveMode.Create))
+    {
+        var entry = zip.CreateEntry("ollama.exe");
+        using var member = entry.Open(); member.Write(fixturePayload);
+    }
+    var payloadManifest = new OllamaPayloadManifest("0.0.1", "x64", new("https://github.com/ollama/ollama/releases/download/v0.0.1/fixture.zip"),
+        new FileInfo(fixtureArchive).Length, Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(fixtureArchive))),
+        [new("ollama.exe", fixturePayload.Length, Convert.ToHexString(SHA256.HashData(fixturePayload)))], "Fixture verifier only; not publisher proof");
+    using (var installer = new OllamaInstaller(Path.Combine(root, "fixture-installer")))
+    {
+        var installed = await installer.InstallAsync(payloadManifest, (_, _, _) => Task.FromResult(true), cachedArchivePath: fixtureArchive);
+        Check(await File.ReadAllTextAsync(Path.Combine(installed.Directory, "ollama.exe")) == Encoding.UTF8.GetString(fixturePayload), "Installer transaction changed fixture bytes.");
+        var next = await installer.InstallAsync(payloadManifest with { Version = "0.0.2", Source = new("https://github.com/ollama/ollama/releases/download/v0.0.2/fixture.zip") },
+            (_, _, _) => Task.FromResult(true), cachedArchivePath: fixtureArchive);
+        await installer.RestoreRecordAsync(next);
+        var active = await File.ReadAllTextAsync(Path.Combine(root, "fixture-installer", "active-installation.json"));
+        Check(active.Contains(installed.Directory.Replace("\\", "\\\\"), StringComparison.Ordinal), "Installer rollback lost prior active version.");
+        await Reject(() => installer.InstallAsync(payloadManifest, (_, _, _) => Task.FromResult(false), cachedArchivePath: fixtureArchive), "Installer accepted failed publisher verification.");
+        Check(await File.ReadAllTextAsync(Path.Combine(root, "fixture-installer", "active-installation.json")) == active, "Rejected installer changed the prior active record.");
+    }
+    var serverFixtureBytes = Encoding.UTF8.GetBytes("Exact distribution fixture bytes; not a real server");
+    using (var provisioningHttp = new HttpClient(new FakeBinaryHandler(serverFixtureBytes)))
+    using (var provisioner = new JavaServerProvisioner(provisioningHttp))
+    {
+        var selected = new ResolvedJavaDistribution("fixture", new("https://piston-data.mojang.com/fixture.jar"),
+            Convert.ToHexString(SHA1.HashData(serverFixtureBytes)), serverFixtureBytes.Length, 21, ServerCatalogue.JavaManifest);
+        var provisioned = await provisioner.CreateAsync(selected, Path.Combine(root, "provisioned-fixture"), true, 25565);
+        Check(await File.ReadAllTextAsync(provisioned.ServerJar) == Encoding.UTF8.GetString(serverFixtureBytes), "Provisioning did not preserve exact selected distribution bytes.");
+        await Reject(() => provisioner.CreateAsync(selected, provisioned.Directory, true, 25565), "Provisioning replaced an existing instance directory.");
+        await Reject(() => provisioner.CreateAsync(selected, Path.Combine(root, "no-consent"), false, 25565), "Provisioning ignored missing EULA consent.");
+    }
+    var workerManifestPath = Path.Combine(root, "worker-manifest.json");
+    await File.WriteAllTextAsync(workerManifestPath, System.Text.Json.JsonSerializer.Serialize(new {
+        sourceCommit = new string('a', 40), runtime = "win-x64",
+        members = new[] { new { relativePath = "WinSshCopyId.ToolWorker.exe", bytes = 1, sha256 = new string('b',64) } } }));
+    var admittedWorker = await PackagedWorkerManifest.LoadAsync(workerManifestPath, root, new string('a',40));
+    Check(admittedWorker.AvailableAdapters.IsEmpty, "Manifest admission enabled an adapter without confined execution.");
+    await Reject(() => PackagedWorkerManifest.LoadAsync(workerManifestPath, root, new string('c',40)), "Worker from another source commit was accepted.");
+    await Reject(() => Task.FromResult(new ConfinedLocalConverter(root, ImmutableDictionary<string,string>.Empty
+        .Add("WinSshCopyId.ToolWorker.exe",new string('b',64)).Add("bad:stream",new string('b',64)))), "Worker inventory admitted an alternate stream path.");
+    Console.WriteLine($"PASS: {completed} local tool assertions; only bounded test child launched, no real server or service launched.");
 }
 finally { Directory.Delete(root, true); }
 
@@ -81,4 +192,34 @@ sealed class FakeHandler(string body) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body), RequestMessage = request });
+}
+sealed class FakeBinaryHandler(byte[] body) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body), RequestMessage = request });
+}
+sealed class FakeDocker(Guid instanceId, string image) : IServerCommandExecutor
+{
+    public List<ServerCommand> Commands { get; } = [];
+    private bool running;
+    public Task<ServerCommandResult> ExecuteAsync(ServerCommand command, CancellationToken cancellationToken)
+    {
+        Commands.Add(command);
+        var action = command.Arguments.Length > 1 ? command.Arguments[1] : "";
+        if (command.Arguments[0] == "image") return Task.FromResult(new ServerCommandResult(0, System.Text.Json.JsonSerializer.Serialize(new[] { image }), "", false));
+        if (action == "start") running = true;
+        if (action == "stop") running = false;
+        var output = action switch
+        {
+            "create" => new string('b', 64),
+            "inspect" => System.Text.Json.JsonSerializer.Serialize(new[] { new { Id = new string('b',64), Config = new { Image = image, Labels = new Dictionary<string,string> { ["winsshcopyid.instance"] = instanceId.ToString("D") } }, State = new { Running = running, ExitCode = 0 } } }),
+            _ => new string('b', 64)
+        };
+        return Task.FromResult(new ServerCommandResult(0, output, "", false));
+    }
+}
+sealed class WrongHostTransport : IApprovedServerSshTransport
+{
+    public Task<ServerRemoteReceipt> ExecuteAsync(ApprovedServerHost approvedHost, ServerRemoteRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(new ServerRemoteReceipt(request.RequestId, request.InstanceId, "wrong-host", null, ServerObservedState.Stopped, true, "Fake mismatch", []));
 }

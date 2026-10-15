@@ -58,7 +58,12 @@ public sealed class ConversionQueue
         finally { writer.Release(); }
     }
 
-    public async Task ProcessAsync(LocalConverter converter, IProgress<ConversionJob>? progress = null, CancellationToken token = default)
+    public Task ProcessAsync(LocalConverter converter, IProgress<ConversionJob>? progress = null, CancellationToken token = default)
+        => ProcessCoreAsync(converter.ConvertAsync, progress, token);
+    public Task ProcessAsync(ConfinedLocalConverter converter, IProgress<ConversionJob>? progress = null, CancellationToken token = default)
+        => ProcessCoreAsync(converter.ConvertAsync, progress, token);
+    private async Task ProcessCoreAsync(Func<string, string, string, CancellationToken, Task<ConversionResult>> convert,
+        IProgress<ConversionJob>? progress, CancellationToken token)
     {
         await writer.WaitAsync(token);
         try
@@ -80,7 +85,7 @@ public sealed class ConversionQueue
                 await SaveAsync(job, token); progress?.Report(job);
                 try
                 {
-                    var result = await converter.ConvertAsync(job.Source, job.Destination, job.AdapterId, token);
+                    var result = await convert(job.Source, job.Destination, job.AdapterId, token);
                     job = job with { State = result.Status, Message = result.Message, UpdatedAt = DateTimeOffset.UtcNow };
                 }
                 catch (OperationCanceledException) { job = job with { State = "Cancelled", Message = "Cancelled during processing.", UpdatedAt = DateTimeOffset.UtcNow }; }

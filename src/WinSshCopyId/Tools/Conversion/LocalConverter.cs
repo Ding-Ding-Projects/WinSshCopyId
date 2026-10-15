@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 
 namespace WinSshCopyId.Tools.Conversion;
 
@@ -58,7 +59,7 @@ public sealed class LocalConverter
         var directory = Path.GetDirectoryName(outputPath)!;
         if (!Directory.Exists(directory)) throw new DirectoryNotFoundException("The selected destination folder does not exist.");
         var root = Path.GetPathRoot(outputPath);
-        if (root is not null && new DriveInfo(root).AvailableFreeSpace < output.LongLength + 1024 * 1024)
+        if (!IsAppContainer() && root is not null && new DriveInfo(root).AvailableFreeSpace < output.LongLength + 1024 * 1024)
             throw new IOException("Insufficient destination storage capacity.");
         var temporary = Path.Combine(directory, ".conversion-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
@@ -72,6 +73,18 @@ public sealed class LocalConverter
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
+
+    private static bool IsAppContainer()
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        if (!OpenProcessToken(GetCurrentProcess(), 8, out var handle)) return false;
+        try { return GetTokenInformation(handle, 29, out var isContainer, sizeof(int), out _) && isContainer != 0; }
+        finally { CloseHandle(handle); }
+    }
+    [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+    [DllImport("advapi32.dll", SetLastError = true)] private static extern bool OpenProcessToken(IntPtr process, uint desiredAccess, out IntPtr token);
+    [DllImport("advapi32.dll", SetLastError = true)] private static extern bool GetTokenInformation(IntPtr token, int informationClass, out int information, int length, out int returned);
 
     public static string Detect(ReadOnlySpan<byte> bytes)
     {

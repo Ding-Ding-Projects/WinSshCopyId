@@ -14,8 +14,9 @@ Set-Location $root
 $m=Get-Content (Join-Path $root 'build/manifest.json') -Raw | ConvertFrom-Json
 $silent=$env:SILENT -eq '1'
 $run=$env:RUN_AFTER_BUILD -eq '1'
+$site=$false
 foreach($option in $Options) {
-  switch($option) { '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
+  switch($option) { '--site' {$site=$true} '/s' {$silent=$true} '--silent' {$silent=$true} '/run' {$run=$true} '--run' {$run=$true} default {throw "Unknown option: $option"} }
 }
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 function Invoke-Checked([string]$File,[string[]]$Arguments) {
@@ -42,9 +43,12 @@ function Get-VerifiedDownload($Spec,[string]$Destination,[string]$Algorithm) {
   } finally {if(Test-Path $temp) {Remove-Item -LiteralPath $temp -Force}}
 }
 . (Join-Path $PSScriptRoot 'bootstrap.ps1')
+. (Join-Path $PSScriptRoot 'build-receipt.ps1')
 try {
+  $buildStartedUtc=[DateTime]::UtcNow.ToString('o')
   $timer=[Diagnostics.Stopwatch]::StartNew()
   if($env:OS -ne 'Windows_NT' -or ![Environment]::Is64BitOperatingSystem) {throw 'This build requires 64-bit Windows.'}
+  if($site) {if($Action -ne 'build') {throw '--site is supported only by root build.bat.'};. (Join-Path $PSScriptRoot 'build-site.ps1');exit 0}
   Write-Host 'Using project-local portable tooling; administrator rights are not required.'
   $tools=Assert-Contained (Join-Path $root '.tools') $root; New-Item -ItemType Directory -Force $tools | Out-Null
   $lock=[IO.File]::Open((Join-Path $tools 'bootstrap.lock'),'OpenOrCreate','ReadWrite','None')
@@ -54,6 +58,8 @@ try {
     Get-VerifiedDownload $m.nuget (Join-Path $tools 'nuget.exe') SHA256
     Get-VerifiedDownload $m.squirrel (Join-Path $tools 'squirrel.zip') SHA256
     Expand-Verified (Join-Path $tools 'squirrel.zip') (Join-Path $tools 'squirrel') 'tools/Squirrel.exe'
+    Get-VerifiedDownload $m.mingit (Join-Path $tools 'mingit.zip') SHA256
+    Expand-Verified (Join-Path $tools 'mingit.zip') (Join-Path $tools 'mingit') 'cmd/git.exe'
   } finally {$lock.Dispose()}
   $dotnet=Join-Path $tools 'dotnet/dotnet.exe'
   $env:DOTNET_ROOT=Split-Path $dotnet; $env:DOTNET_MULTILEVEL_LOOKUP='0'; $env:DOTNET_CLI_TELEMETRY_OPTOUT='1'
@@ -66,12 +72,38 @@ try {
   $source=Get-Source
   $manifestHash=(Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash
   $publish=Resolve-Output $m.publishDirectory @('artifacts/publish')
-  if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
-  New-Item -ItemType Directory -Force $publish | Out-Null
   $version=$m.version
   if($env:BUILD_VERSION) {$version=$env:BUILD_VERSION}
   if($version -notmatch '^\d+\.\d+\.\d+$') {throw 'BUILD_VERSION must have three numeric components.'}
+  $sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();$indexTree=(& git write-tree).Trim()
+  $receiptPath=Join-Path $root 'artifacts/build-receipt.json'
+  if($Action -eq 'installer') {
+    if(!(Test-BuildReceipt $receiptPath $publish $source $manifestHash $version $m.runtime $sourceTree $indexTree)) {
+      Write-Host 'No valid unchanged-source build receipt; invoking root build.bat /s.'
+      $buildLock.Dispose();Remove-Variable buildLock
+      Invoke-Checked (Join-Path $root 'build.bat') @('/s')
+      $buildLock=[IO.File]::Open((Join-Path $tools 'producer.lock'),'OpenOrCreate','ReadWrite','None')
+    } else {Write-Host 'Reusing verified unchanged-source build receipt; compilation is not repeated.'}
+    if((Get-Source) -ne $source -or !(Test-BuildReceipt $receiptPath $publish $source $manifestHash $version $m.runtime $sourceTree $indexTree)) {throw 'Root build receipt did not validate for installer source and payload.'}
+  } else {
+    if(Test-Path $publish) {Remove-Item -LiteralPath $publish -Recurse -Force}
+    New-Item -ItemType Directory -Force $publish | Out-Null
   Invoke-Checked $dotnet @('publish',$m.project,'-c','Release','-r',$m.runtime,'--self-contained','true','-p:Platform=x64','-p:WindowsAppSDKSelfContained=true','-p:WindowsPackageType=None',"-p:Version=$version",'-o',$publish)
+  if($m.worker.directory -ne 'Tools/Worker' -or $m.worker.manifest -ne 'Tools/worker-manifest.json' -or $m.mingit.directory -ne 'Tools/MinGit' -or $m.mingit.manifest -ne 'Tools/mingit-manifest.json') {throw 'Unexpected bundled tool layout.'}
+  $worker=Assert-Contained (Join-Path $publish $m.worker.directory) $publish
+  New-Item -ItemType Directory -Force $worker | Out-Null
+  Invoke-Checked $dotnet @('publish',$m.worker.project,'-c','Release','-r',$m.runtime,'--self-contained','true',"-p:Version=$version",'-o',$worker)
+  foreach($name in @($m.worker.executable,'coreclr.dll','hostfxr.dll')) {if(!(Test-Path -LiteralPath (Join-Path $worker $name) -PathType Leaf)) {throw "Worker payload missing: $name"}}
+  $workerMembers=@(Get-ChildItem $worker -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($worker.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  @{sourceCommit=$source;runtime=$m.runtime;members=$workerMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.worker.manifest)
+  $gitPayload=Assert-Contained (Join-Path $publish $m.mingit.directory) $publish
+  New-Item -ItemType Directory -Force $gitPayload | Out-Null
+  Get-ChildItem (Join-Path $tools 'mingit') -Force | Copy-Item -Destination $gitPayload -Recurse -Force
+  if(!(Test-Tree $gitPayload (Join-Path $tools 'mingit.zip') -Diagnose -OwnerRoot $publish)) {throw 'Bundled MinGit differs from its pinned archive.'}
+  if(!(Test-Path -LiteralPath (Join-Path $gitPayload $m.mingit.license))) {throw 'Bundled MinGit license is missing.'}
+  Invoke-Checked (Join-Path $gitPayload $m.mingit.executable) @('--version')
+  $gitMembers=@(Get-ChildItem $gitPayload -Recurse -File -Force | Sort-Object FullName | ForEach-Object {@{relativePath=$_.FullName.Substring($gitPayload.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash}})
+  @{sourceCommit=$source;runtime=$m.runtime;version=$m.mingit.version;executable=$m.mingit.executable;license=$m.mingit.license;sourceUrl=$m.mingit.sourceUrl;archiveSha256=$m.mingit.sha256;members=$gitMembers} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $publish $m.mingit.manifest)
   foreach($name in $m.requiredPayload) { $path=Join-Path $publish $name; if(!(Test-Path $path) -or (Get-Item $path).Length -eq 0) {throw "Self-contained payload missing: $name"} }
   $updaterSource=Join-Path $tools 'squirrel/tools/Squirrel.exe'
   Copy-Item $updaterSource (Join-Path $publish 'Update.exe')
@@ -79,11 +111,14 @@ try {
   if((Get-FileHash (Join-Path $publish 'Update.exe') -Algorithm SHA256).Hash -ne $updaterHash) {throw 'Bundled updater differs from pinned Squirrel binary.'}
   @{updateFeed=$m.updateFeed;version=$version} | ConvertTo-Json | Set-Content (Join-Path $publish 'update-config.json')
   if((Get-Source) -ne $source) {throw 'Source changed during build.'}
-  $payload=@(Get-ChildItem $publish -Recurse -File | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
+  @{sourceCommit=$source;version=$version;builtAtUtc=$buildStartedUtc;runtime=$m.runtime;manifestSha256=$manifestHash} | ConvertTo-Json | Set-Content (Join-Path $publish 'build-info.json')
+  $payload=@(Get-ChildItem $publish -Recurse -File -Force | ForEach-Object { @{path=$_.FullName.Substring($publish.Length+1);sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash;bytes=$_.Length} })
   if((Get-FileHash 'build/manifest.json' -Algorithm SHA256).Hash -ne $manifestHash) {throw 'Manifest changed during build.'}
-  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
+  $receipt=@{schemaVersion=1;sourceTree=(& git rev-parse 'HEAD^{tree}').Trim();indexTree=(& git write-tree).Trim();sourceCommit=$source;manifestSha256=$manifestHash;version=$version;runtime=$m.runtime;command='build.bat /s';publishDirectory=$m.publishDirectory;executable=$m.executable;project=$m.project;updaterSha256=$updaterHash;files=$payload;createdUtc=[DateTime]::UtcNow.ToString('o')}
   $receipt | ConvertTo-Json -Depth 6 | Set-Content 'artifacts/build-receipt.json'
   Write-Host "Built $($m.executable) from $source. Elapsed: $($timer.Elapsed)"
+
+  }
   if($Action -eq 'installer') {
     $releases=Resolve-Output $m.releaseDirectory @('artifacts/releases')
     if(Test-Path $releases) {Remove-Item -LiteralPath $releases -Recurse -Force}
@@ -107,6 +142,11 @@ try {
   if($run -and $Action -eq 'build') {if((Get-Source) -ne $source) {throw 'Source changed before launch.'}; Start-Process -FilePath (Join-Path $publish $m.executable)}
   exit 0
 } catch {Write-Error $_; exit 1} finally {if(Get-Variable buildLock -ErrorAction SilentlyContinue) {$buildLock.Dispose()}}
+
+
+
+
+
 
 
 
