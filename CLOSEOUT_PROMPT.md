@@ -14,11 +14,15 @@ real AppContainer execution against worker producer
 
 Separate native candidate 817e9a555d9783c26c8b3cff4daa9e43672bb548 passed focused
 150% normal/minimum UI checks. New profile-path and mixed-retry cancellation
-repairs require another source-bound build. Documentation candidate
+repairs are integrated from1324ed57053a17ba53cd302f6c730fa80d9cfdad and require
+another source-bound build. Documentation candidate
 b028536cb94e616bb2af78a71fc34be617e86072 has eleven local checks and genuine
 browser evidence for its now-integrated foundation and repairs. GitHub Pages is
 configured for workflow deployment, with live verification pending. The complete feature
-inventory remains incomplete. SSH loopback verification is active.
+inventory remains incomplete. SSH loopback acceptance from
+f31877a701ef5b84b8234f4466ead0ed629536de passed nine checks with generated identities,
+exact cancellation/timeout assertions and verified owned teardown. Commands are
+emulated; POSIX/OpenSSH server interoperability remains unverified.
 
 Preserve all task branches and evidence. Integrate independently completed work,
 push main and verify its exact remote ref. Use the selected current physical

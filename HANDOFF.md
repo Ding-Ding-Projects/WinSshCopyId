@@ -22,18 +22,24 @@ native interaction, installation and full feature acceptance are separate result
 - Standard hosted `windows-2022` workflows build/package without tests or lint.
   New releases are normal releases; task branches cannot replace latest.
 
-## Native candidate and integrated documentation foundation
+## Integrated native and documentation foundations
 
 - Native candidate `817e9a555d9783c26c8b3cff4daa9e43672bb548` built successfully.
   Genuine current-host checks passed Connections, Keys, Results, Settings,
   Light + Bilingual save and minimum resize at actual 150% scale. Evidence-profile
   mode disabled SSH and real credential use. Other scales remain unverified.
-- Independent review confirmed embedded profile key-path access and mixed-retry
-  cancellation defects. Repairs and a new source-bound build are in progress.
-- SSH and workspace services remain on their owning branches. Existing suites
+- Native repair `1324ed57053a17ba53cd302f6c730fa80d9cfdad` closes embedded profile
+  key-path access and mixed-retry cancellation defects. Eleven UI logic checks
+  pass and independent source review accepts both repairs. The integrated
+  native candidate still requires a fresh build and focused runtime verification.
+- SSH and workspace services are integrated. Existing suites
   report 35 service tests, 58 workspace checks and 141 synthetic security assertions.
-  A real loopback SSH fixture is exposing and repairing cancellation and RSA
-  negotiation behavior; final results are pending.
+  SSH acceptance source `f31877a701ef5b84b8234f4466ead0ed629536de` adds genuine
+  loopback negotiation and authentication with generated identities. Nine
+  acceptance checks passed, including explicit host approval, Ed25519/RSA,
+  changed keys, duplicates, cancellation, the exact timeout exception and partial
+  batches. The fixture emulates commands and does not prove POSIX/OpenSSH server
+  interoperability. Independent review accepted the production and assertion repairs.
 - Integrated documentation source `b028536cb94e616bb2af78a71fc34be617e86072` has 17 complete
   articles/wiki chapters, locally bundled controls and an explicitly incomplete
   67-row inventory. Eleven local checks pass. Genuine hidden-browser checks cover
