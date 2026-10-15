@@ -8,9 +8,22 @@ namespace WinSshCopyId.Services;
 
 public sealed record DeploymentRequest(string Host, int Port, string Username, string PublicKey,
     string PrivateKeyPath, bool Verify = true);
-public enum DeploymentState { Installed, AlreadyPresent, Failed, Cancelled }
+public enum DeploymentState { Installed, AlreadyPresent, Failed, Cancelled, NotStarted, Skipped }
+public enum InstallationState { NotStarted, Installed, AlreadyPresent, Failed, Uncertain }
+public enum VerificationState { NotRequested, NotStarted, Succeeded, Failed, Cancelled }
+public enum DeploymentRetryAction { None, Deploy, VerifyOnly, Reconcile }
 public sealed record DeploymentOutcome(DeploymentRequest Request, DeploymentState State, bool Verified,
-    string? Fingerprint, string? Error);
+    string? Fingerprint, string? Error)
+{
+    public InstallationState Installation { get; init; } = InstallationState.NotStarted;
+    public VerificationState Verification { get; init; } = VerificationState.NotStarted;
+    public bool CancellationRequested { get; init; }
+    public DeploymentRetryAction RetryAction { get; init; }
+    public HostKeyChangedException? HostKeyChange { get; init; }
+    public bool IsRetryableFailure => RetryAction is DeploymentRetryAction.Deploy or DeploymentRetryAction.VerifyOnly;
+}
+/// <summary>A transport may use this only when it knows installation never reached the server.</summary>
+public sealed class DeploymentNotStartedException(string message) : Exception(message);
 public sealed record DeploymentProgress(int Completed, int Total, string Host, string Stage);
 
 public interface ISshDeploymentTransport
@@ -48,33 +61,67 @@ public sealed class SequentialDeploymentService(ISshDeploymentTransport transpor
                 SshInput.ValidatePublicKey(request.PublicKey);
                 if (request.Verify && string.IsNullOrWhiteSpace(request.PrivateKeyPath)) throw new ArgumentException("Verification requires an identity path.");
             }
-            cancellationToken.ThrowIfCancellationRequested();
-            string? password = await passwordProvider(cancellationToken).ConfigureAwait(false);
-            if (password is null) throw new OperationCanceledException("Authentication was cancelled.", cancellationToken);
             var results = new List<DeploymentOutcome>();
+            string? password = null;
+            bool cancelled = cancellationToken.IsCancellationRequested;
             try
             {
+                if (!cancelled)
+                {
+                    try { password = await passwordProvider(cancellationToken).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { cancelled = true; }
+                    if (password is null) cancelled = true;
+                }
                 foreach (var request in batch)
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
+                    if (cancelled || cancellationToken.IsCancellationRequested)
+                    {
+                        cancelled = true;
+                        results.Add(new(request, DeploymentState.NotStarted, false, null, "Not started because the operation was cancelled.")
+                        { Installation = InstallationState.NotStarted, Verification = request.Verify ? VerificationState.NotStarted : VerificationState.NotRequested,
+                            CancellationRequested = true });
+                        continue;
+                    }
                     progress?.Report(new(results.Count, batch.Length, request.Host, "Connecting"));
+                    DeployResult? installed = null;
+                    bool verified = false;
                     try
                     {
-                        var installed = await transport.InstallAsync(request, password, cancellationToken).ConfigureAwait(false);
+                        installed = await transport.InstallAsync(request, password!, cancellationToken).ConfigureAwait(false);
                         cancellationToken.ThrowIfCancellationRequested();
-                        bool verified = false;
                         if (request.Verify)
                         {
                             if (string.IsNullOrWhiteSpace(installed.ServerFingerprint)) throw new InvalidOperationException("The server did not supply a host fingerprint.");
                             verified = await transport.VerifyAsync(request, installed.ServerFingerprint, passphrase, cancellationToken).ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
                             if (!verified) throw new InvalidOperationException("Key login verification failed.");
                         }
-                        results.Add(new(request, installed.KeyWasAlreadyPresent ? DeploymentState.AlreadyPresent : DeploymentState.Installed,
-                            verified, installed.ServerFingerprint, null));
+                        results.Add(Outcome(request, installed, verified, false, request.Verify ? VerificationState.Succeeded : VerificationState.NotRequested, null));
                     }
-                    catch (OperationCanceledException) { results.Add(new(request, DeploymentState.Cancelled, false, null, null)); break; }
-                    catch (Exception) when (cancellationToken.IsCancellationRequested) { results.Add(new(request, DeploymentState.Cancelled, false, null, null)); break; }
-                    catch (Exception) { results.Add(new(request, DeploymentState.Failed, false, null, "Deployment failed. Check the endpoint, authentication and trusted host key.")); }
+                    catch (Exception ex)
+                    {
+                        cancelled = ex is OperationCanceledException || cancellationToken.IsCancellationRequested;
+                        if (installed is not null)
+                        {
+                            results.Add(Outcome(request, installed, verified, cancelled,
+                                verified ? VerificationState.Succeeded : request.Verify ? (cancelled ? VerificationState.Cancelled : VerificationState.Failed) : VerificationState.NotRequested,
+                                verified ? null : cancelled ? "Installation completed; verification was cancelled or not started. Server changes remain in place."
+                                    : "Installation completed, but key login verification failed. Retry verification before installing again."));
+                        }
+                        else
+                        {
+                            bool knownNotInstalled = ex is DeploymentNotStartedException or HostKeyChangedException;
+                            results.Add(new(request, cancelled ? DeploymentState.Cancelled : DeploymentState.Failed, false, null,
+                                ex is HostKeyChangedException ? ex.Message : knownNotInstalled ? "Installation did not start. Check the endpoint, authentication and trusted host key."
+                                    : "Installation outcome is uncertain. Inspect the server before retrying; cancellation does not undo server changes.")
+                            {
+                                Installation = knownNotInstalled ? InstallationState.Failed : InstallationState.Uncertain,
+                                Verification = request.Verify ? VerificationState.NotStarted : VerificationState.NotRequested,
+                                CancellationRequested = cancelled, HostKeyChange = ex as HostKeyChangedException,
+                                RetryAction = knownNotInstalled && !cancelled && ex is not HostKeyChangedException ? DeploymentRetryAction.Deploy : DeploymentRetryAction.Reconcile,
+                            });
+                        }
+                    }
                     progress?.Report(new(results.Count, batch.Length, request.Host, "Finished"));
                 }
             }
@@ -83,4 +130,14 @@ public sealed class SequentialDeploymentService(ISshDeploymentTransport transpor
         }
         finally { Volatile.Write(ref _running, 0); }
     }
+    private static DeploymentOutcome Outcome(DeploymentRequest request, DeployResult installed, bool verified,
+        bool cancelled, VerificationState verification, string? error) =>
+        new(request, installed.KeyWasAlreadyPresent ? DeploymentState.AlreadyPresent : DeploymentState.Installed,
+            verified, installed.ServerFingerprint, error)
+        {
+            Installation = installed.KeyWasAlreadyPresent ? InstallationState.AlreadyPresent : InstallationState.Installed,
+            Verification = verification, CancellationRequested = cancelled,
+            RetryAction = verification is VerificationState.Failed or VerificationState.Cancelled ? DeploymentRetryAction.VerifyOnly : DeploymentRetryAction.None,
+        };
+
 }

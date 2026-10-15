@@ -79,99 +79,151 @@ public sealed class KeyManager
     /// Create a new key pair in ~/.ssh. The base file name is chosen so an
     /// existing key is never overwritten. Returns the new identity.
     /// </summary>
+    public IReadOnlyList<string> GetSupportedAlgorithms() => FindSshKeygen().Length > 0
+        ? new[] { "ed25519", "rsa" } : new[] { "rsa" };
+
     public KeyEntry GenerateKey(string comment, Action<string> log)
     {
-        Directory.CreateDirectory(SshDir);
-
-        string keygen = FindSshKeygen();
-        if (keygen.Length > 0)
+        string algorithm = GetSupportedAlgorithms()[0];
+        for (int i = 0; i < 1000; i++)
         {
-            string target = NextFreePath("id_ed25519");
-            log($"Generating ed25519 key with ssh-keygen -> {target}");
-            GenerateWithSshKeygen(keygen, target, comment, log);
-            string pubPath = target + ".pub";
-            return new KeyEntry
-            {
-                PublicKeyPath = pubPath,
-                PublicKeyLine = File.ReadAllText(pubPath).Trim(),
-                PrivateKeyPath = target,
-            };
+            string name = "id_" + algorithm + (i == 0 ? "" : "_winsshcopyid_" + i);
+            string target = Path.Combine(SshDir, name);
+            if (!File.Exists(target) && !File.Exists(target + ".pub"))
+                return GenerateKey(target, algorithm, comment, log);
         }
-
-        // Managed fallback: no OpenSSH tools available.
-        string rsaTarget = NextFreePath("id_rsa");
-        log($"ssh-keygen not found; generating RSA-3072 key in-process -> {rsaTarget}");
-        (string privatePem, string publicLine) = OpenSshKey.GenerateRsa(3072, comment);
-        File.WriteAllText(rsaTarget, privatePem, new UTF8Encoding(false));
-        File.WriteAllText(rsaTarget + ".pub", publicLine + "\n", new UTF8Encoding(false));
-        TryRestrictPermissions(rsaTarget);
-        return new KeyEntry
-        {
-            PublicKeyPath = rsaTarget + ".pub",
-            PublicKeyLine = publicLine,
-            PrivateKeyPath = rsaTarget,
-        };
+        throw new IOException("No free identity name is available.");
     }
 
-    private static void GenerateWithSshKeygen(string keygen, string target, string comment, Action<string> log)
+    /// <summary>Stages and verifies a pair before no-overwrite publication. A failed publication rolls back owned files.</summary>
+    public KeyEntry GenerateKey(string destinationBasePath, string algorithm, string comment, Action<string> log,
+        System.Threading.CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationBasePath);
+        if (comment.Any(char.IsControl)) throw new ArgumentException("Key comments cannot contain control characters.", nameof(comment));
+        if (!GetSupportedAlgorithms().Contains(algorithm, StringComparer.Ordinal)) throw new ArgumentException("Unsupported key generation algorithm.", nameof(algorithm));
+        string target = Path.GetFullPath(destinationBasePath);
+        if (target.EndsWith(".pub", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Choose an identity basename, without .pub.");
+        string parent = Path.GetDirectoryName(target)!;
+        Directory.CreateDirectory(parent);
+        if (File.Exists(target) || File.Exists(target + ".pub") || Directory.Exists(target) || Directory.Exists(target + ".pub"))
+            throw new IOException("An identity already exists at this destination.");
+        cancellationToken.ThrowIfCancellationRequested();
+        string staging = Path.Combine(parent, ".keygen-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(staging);
+        string stagedKey = Path.Combine(staging, "identity");
+        bool publishedPrivate = false;
+        bool publishedPublic = false;
+        byte[]? privateHash = null;
+        byte[]? publicHash = null;
+        try
         {
-            FileName = keygen,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add("-t");
-        psi.ArgumentList.Add("ed25519");
-        psi.ArgumentList.Add("-f");
-        psi.ArgumentList.Add(target);
-        psi.ArgumentList.Add("-N");
-        psi.ArgumentList.Add(string.Empty); // empty passphrase
-        psi.ArgumentList.Add("-C");
-        psi.ArgumentList.Add(comment);
-
-        using var proc = Process.Start(psi)
-            ?? throw new InvalidOperationException("Failed to start ssh-keygen.");
-        string stdout = proc.StandardOutput.ReadToEnd();
-        string stderr = proc.StandardError.ReadToEnd();
-        proc.WaitForExit();
-
-        if (proc.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"ssh-keygen exited with code {proc.ExitCode}. {stderr.Trim()}");
-        }
-        if (stdout.Trim().Length > 0)
-        {
-            log(stdout.Trim());
-        }
-    }
-
-    private static string NextFreePath(string baseName)
-    {
-        string candidate = Path.Combine(SshDir, baseName);
-        if (!File.Exists(candidate) && !File.Exists(candidate + ".pub"))
-        {
-            return candidate;
-        }
-
-        candidate = Path.Combine(SshDir, baseName + "_winsshcopyid");
-        if (!File.Exists(candidate) && !File.Exists(candidate + ".pub"))
-        {
-            return candidate;
-        }
-
-        for (int i = 1; i < 1000; i++)
-        {
-            string c = Path.Combine(SshDir, $"{baseName}_winsshcopyid_{i}");
-            if (!File.Exists(c) && !File.Exists(c + ".pub"))
+            RestrictAndVerifyDirectory(staging);
+            if (algorithm == "ed25519") GenerateWithSshKeygen(FindSshKeygen(), stagedKey, comment, cancellationToken);
+            else
             {
-                return c;
+                var pair = OpenSshKey.GenerateRsa(3072, comment);
+                cancellationToken.ThrowIfCancellationRequested();
+                File.WriteAllText(stagedKey, pair.PrivatePem, new UTF8Encoding(false));
+                File.WriteAllText(stagedKey + ".pub", pair.PublicLine + "\n", new UTF8Encoding(false));
             }
+            RestrictAndVerifyPrivateKey(stagedKey);
+            string publicLine = SshInput.ValidatePublicKey(File.ReadAllText(stagedKey + ".pub").Trim());
+            using (var privateFile = new Renci.SshNet.PrivateKeyFile(stagedKey))
+            {
+                if (!privateFile.HostKeyAlgorithms.First().Data.AsSpan().SequenceEqual(Convert.FromBase64String(publicLine.Split(' ')[1])))
+                    throw new InvalidDataException("Generated public and private keys do not match.");
+            }
+            privateHash = System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(stagedKey));
+            publicHash = System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(stagedKey + ".pub"));
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(stagedKey, target, false);
+            publishedPrivate = true;
+            File.Move(stagedKey + ".pub", target + ".pub", false);
+            publishedPublic = true;
+            VerifyPrivateKeyPermissions(target);
+            log("Identity pair generated and private-key permissions verified.");
+            return new KeyEntry { PrivateKeyPath = target, PublicKeyPath = target + ".pub", PublicKeyLine = publicLine };
         }
-        throw new IOException("Could not find a free key file name in ~/.ssh.");
+        catch
+        {
+            DeleteOwned(target + ".pub", publishedPublic, publicHash);
+            DeleteOwned(target, publishedPrivate, privateHash);
+            throw;
+        }
+        finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
+    }
+
+    private static void DeleteOwned(string path, bool owned, byte[]? expected)
+    {
+        if (owned && expected is not null && File.Exists(path) &&
+            System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path)).AsSpan().SequenceEqual(expected)) File.Delete(path);
+    }
+
+    private static void GenerateWithSshKeygen(string keygen, string target, string comment, System.Threading.CancellationToken cancellationToken)
+    {
+        var psi = new ProcessStartInfo(keygen) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+        foreach (string arg in new[] { "-q", "-t", "ed25519", "-f", target, "-N", "", "-C", comment }) psi.ArgumentList.Add(arg);
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start ssh-keygen.");
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        try
+        {
+            using var timeout = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var linked = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+            process.WaitForExitAsync(linked.Token).GetAwaiter().GetResult();
+            System.Threading.Tasks.Task.WhenAll(output, error).GetAwaiter().GetResult();
+            if (process.ExitCode != 0) throw new InvalidOperationException("ssh-keygen did not generate an identity pair.");
+        }
+        catch { if (!process.HasExited) { process.Kill(true); process.WaitForExit(); } throw; }
+    }
+
+    private static void RestrictAndVerifyDirectory(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var user = System.Security.Principal.WindowsIdentity.GetCurrent().User ?? throw new InvalidOperationException("Current user identity is unavailable.");
+            var security = new System.Security.AccessControl.DirectorySecurity();
+            security.SetOwner(user); security.SetAccessRuleProtection(true, false);
+            security.AddAccessRule(new(user, System.Security.AccessControl.FileSystemRights.FullControl,
+                System.Security.AccessControl.InheritanceFlags.ContainerInherit | System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+                System.Security.AccessControl.PropagationFlags.None, System.Security.AccessControl.AccessControlType.Allow));
+            System.IO.FileSystemAclExtensions.SetAccessControl(new DirectoryInfo(path), security);
+        }
+        else File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
+
+    private static void RestrictAndVerifyPrivateKey(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var user = System.Security.Principal.WindowsIdentity.GetCurrent().User ?? throw new InvalidOperationException("Current user identity is unavailable.");
+            var current = System.IO.FileSystemAclExtensions.GetAccessControl(new FileInfo(path));
+            if (!user.Equals(current.GetOwner(typeof(System.Security.Principal.SecurityIdentifier))))
+                throw new IOException("Generated private key is not owned by the current user.");
+            var security = new System.Security.AccessControl.FileSecurity();
+            security.SetAccessRuleProtection(true, false);
+            security.AddAccessRule(new(user, System.Security.AccessControl.FileSystemRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+            System.IO.FileSystemAclExtensions.SetAccessControl(new FileInfo(path), security);
+        }
+        else File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        VerifyPrivateKeyPermissions(path);
+    }
+
+    public static void VerifyPrivateKeyPermissions(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var user = System.Security.Principal.WindowsIdentity.GetCurrent().User ?? throw new InvalidOperationException("Current user identity is unavailable.");
+            var security = System.IO.FileSystemAclExtensions.GetAccessControl(new FileInfo(path));
+            if (!security.AreAccessRulesProtected || !user.Equals(security.GetOwner(typeof(System.Security.Principal.SecurityIdentifier))))
+                throw new IOException("Private-key ownership or inheritance is unsafe.");
+            foreach (System.Security.AccessControl.FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier)))
+                if (rule.AccessControlType == System.Security.AccessControl.AccessControlType.Allow && !user.Equals(rule.IdentityReference))
+                    throw new IOException("Private key is accessible to another identity.");
+        }
+        else if ((File.GetUnixFileMode(path) & ~(UnixFileMode.UserRead | UnixFileMode.UserWrite)) != 0)
+            throw new IOException("Private key permissions are unsafe.");
     }
 
     private static string FindSshKeygen()
@@ -210,112 +262,10 @@ public sealed class KeyManager
         return string.Empty;
     }
 
-    private static readonly HashSet<string> KnownKeyTypes = new(StringComparer.Ordinal)
-    {
-        "ssh-ed25519",
-        "ssh-rsa",
-        "ssh-dss",
-        "ecdsa-sha2-nistp256",
-        "ecdsa-sha2-nistp384",
-        "ecdsa-sha2-nistp521",
-        "sk-ssh-ed25519@openssh.com",
-        "sk-ecdsa-sha2-nistp256@openssh.com",
-    };
-
-    /// <summary>
-    /// Strict validation of an OpenSSH public key line ("type base64 [comment]").
-    /// The type must be known, the body must be base64 whose embedded wire type
-    /// matches the declared type, and the whole line must contain no control
-    /// characters. This is a security gate: the line is later sent to a remote
-    /// shell, so anything that does not parse cleanly is rejected up front.
-    /// </summary>
     public static bool IsValidPublicKey(string line, out string error)
     {
-        error = string.Empty;
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            error = "the line is empty";
-            return false;
-        }
-        foreach (char c in line)
-        {
-            if (char.IsControl(c))
-            {
-                error = "it contains control characters";
-                return false;
-            }
-        }
-
-        string[] parts = line.Split((char[]?)null, 3, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 2)
-        {
-            error = "expected '<type> <base64> [comment]'";
-            return false;
-        }
-        if (!KnownKeyTypes.Contains(parts[0]))
-        {
-            error = $"unknown key type '{parts[0]}'";
-            return false;
-        }
-
-        byte[] blob;
-        try
-        {
-            blob = Convert.FromBase64String(parts[1]);
-        }
-        catch
-        {
-            error = "the key body is not valid base64";
-            return false;
-        }
-        if (ReadFirstSshString(blob) != parts[0])
-        {
-            error = "the key body does not match its declared type";
-            return false;
-        }
-        return true;
-    }
-
-    // Read the first length-prefixed string from an SSH wire-format blob
-    // (4-byte big-endian length, then that many ASCII bytes).
-    private static string? ReadFirstSshString(byte[] blob)
-    {
-        if (blob.Length < 4)
-        {
-            return null;
-        }
-        long len = ((long)blob[0] << 24) | ((long)blob[1] << 16) | ((long)blob[2] << 8) | blob[3];
-        if (len < 0 || 4 + len > blob.Length)
-        {
-            return null;
-        }
-        return Encoding.ASCII.GetString(blob, 4, (int)len);
-    }
-
-    // Best-effort lock-down of a managed-generated private key so OpenSSH does
-    // not refuse it for being world-readable. ssh-keygen already does this itself.
-    private static void TryRestrictPermissions(string path)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "icacls.exe",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            psi.ArgumentList.Add(path);
-            psi.ArgumentList.Add("/inheritance:r");
-            psi.ArgumentList.Add("/grant:r");
-            psi.ArgumentList.Add($"{Environment.UserName}:F");
-            using var proc = Process.Start(psi);
-            proc?.WaitForExit();
-        }
-        catch
-        {
-            // Non-fatal: the key still works, ssh may just warn about permissions.
-        }
+        try { SshInput.ValidatePublicKey(line); error = string.Empty; return true; }
+        catch (ArgumentException ex) { error = ex.Message; return false; }
     }
 }
+

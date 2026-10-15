@@ -44,14 +44,17 @@ public sealed class SshDeployer
         cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
         using var cancellation = cancellationToken.Register(() => client.Dispose());
+        HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
             fingerprintRaw = e.FingerPrintSHA256;
-            e.CanTrust = _trust.Check(host, port, fingerprintRaw, _approve);
+            try { e.CanTrust = _trust.Check(host, port, fingerprintRaw, _approve, e.HostKeyName); }
+            catch (HostKeyChangedException ex) { changedKey = ex; e.CanTrust = false; }
         };
 
         log($"Connecting to {username}@{host}:{port} ...");
-        client.Connect();
+        try { client.Connect(); }
+        catch when (changedKey is not null) { throw changedKey; }
         log("Authenticated with password.");
         if (fingerprintRaw is not null)
         {
@@ -110,11 +113,13 @@ public sealed class SshDeployer
         cancellationToken.ThrowIfCancellationRequested();
         using var client = new SshClient(connInfo);
         using var cancellation = cancellationToken.Register(() => client.Dispose());
+        HostKeyChangedException? changedKey = null;
         client.HostKeyReceived += (_, e) =>
         {
             if (expectedFingerprint is null)
             {
-                e.CanTrust = _trust.Check(host, port, e.FingerPrintSHA256, _approve);
+                try { e.CanTrust = _trust.Check(host, port, e.FingerPrintSHA256, _approve, e.HostKeyName); }
+                catch (HostKeyChangedException ex) { changedKey = ex; e.CanTrust = false; }
             }
             else if (string.Equals(e.FingerPrintSHA256, expectedFingerprint, StringComparison.Ordinal))
             {
@@ -123,10 +128,12 @@ public sealed class SshDeployer
             else
             {
                 e.CanTrust = false;
-                log($"Host key mismatch! expected SHA256:{expectedFingerprint} but got SHA256:{e.FingerPrintSHA256}");
+                changedKey = new HostKeyChangedException(host, port, expectedFingerprint, e.FingerPrintSHA256, e.HostKeyName);
+                log("Host key mismatch. Connection stopped.");
             }
         };
-        client.Connect();
+        try { client.Connect(); }
+        catch when (changedKey is not null) { throw changedKey; }
         using SshCommand cmd = client.CreateCommand("echo WINSSHCOPYID_OK");
         cmd.CommandTimeout = _timeout;
         cmd.Execute();
