@@ -1,16 +1,17 @@
 {
-  "observedAtUtc": "2026-10-15T04:17:12.9313706Z",
+  "observedAtUtc": "2026-10-15T04:19:56.01274Z",
   "engine": "Paramiko 5.0.0",
   "loopbackTest": {
     "passed": 1,
     "failed": 0,
     "acceptanceChecks": 9,
-    "durationSeconds": 28.9901961
+    "durationSeconds": 28.7205603
   },
   "coreTests": {
     "passed": 35,
     "failed": 0,
-    "skipped": 0
+    "skipped": 0,
+    "rerunDuringThisAssertionOnlyRevision": false
   },
   "ownedServerTeardownVerified": true,
   "checks": [
@@ -26,7 +27,7 @@
   ],
   "sourceSha256": {
     "src/WinSshCopyId/Services/SshDeployer.cs": "eb3c1cd60c316334f6bd059ec82659bcf115b636e2c7e5e84d88f64adc378ce8",
-    "tests/WinSshCopyId.Services.Tests/LoopbackSshTests.cs": "0d464c9213425c95231cd004969cd47c27ed52c4522b0b4df5b1e25559b0f978",
+    "tests/WinSshCopyId.Services.Tests/LoopbackSshTests.cs": "eae3e60a2d9fea795ab2b7605c4ba598fff333972ae8d3a510ae8a489d80331f",
     "tests/WinSshCopyId.Services.Tests/ssh_fixture.py": "4db5ec681fc8a1590b496662e5012b15775e227ed06d53bd53bd479d34ab531b",
     "tests/WinSshCopyId.Services.Tests/requirements.txt": "8145ec4902c5509086d6fdc537b27e3685fa1c064383763eeeb40e33aa88ae21"
   },
@@ -34,5 +35,14 @@
     "Narrow command emulator; no POSIX shell execution or OpenSSH sshd interoperability claim.",
     "No real user identity, credential vault or GUI acceptance.",
     "An earlier task-owned temporary directory remains retained after automatic deletion approval was rejected; read-only verification confirmed its recorded process and listener absent."
-  ]
+  ],
+  "assertions": {
+    "activeCommandCancellation": "OperationCanceledException required; outer wait timeout cannot satisfy assertion",
+    "productionCommandTimeout": "SshOperationTimeoutException required after a fresh command-stalled event",
+    "productionTimeoutElapsedSeconds": {
+      "minimum": 24,
+      "maximum": 30
+    },
+    "fixtureStallCloseSeconds": 35
+  }
 }

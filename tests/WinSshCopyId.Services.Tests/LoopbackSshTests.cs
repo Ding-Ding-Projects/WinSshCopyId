@@ -115,15 +115,17 @@ public sealed class LoopbackSshTests(ITestOutputHelper output)
                 await WaitUntil(() => Count("command-stalled") > stalled, TimeSpan.FromSeconds(10));
                 var cancellationWatch = Stopwatch.StartNew();
                 cancellation.Cancel();
-                var interruption = await Assert.ThrowsAnyAsync<Exception>(() => active.WaitAsync(TimeSpan.FromSeconds(10)));
-                Assert.IsNotType<TimeoutException>(interruption);
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => active.WaitAsync(TimeSpan.FromSeconds(10)));
                 Assert.True(cancellationWatch.Elapsed < TimeSpan.FromSeconds(10));
             }
             checks.Add("Cancellation interrupts an actual active SSH command");
 
+            int beforeTimeout = Count("command-stalled");
             var timeoutWatch = Stopwatch.StartNew();
-            await Assert.ThrowsAnyAsync<Exception>(() => persisted.InstallAsync(request, "fixture-only-not-a-user-credential", CancellationToken.None));
-            Assert.InRange(timeoutWatch.Elapsed.TotalSeconds, 24, 35);
+            var timedCommand = persisted.InstallAsync(request, "fixture-only-not-a-user-credential", CancellationToken.None);
+            await WaitUntil(() => Count("command-stalled") > beforeTimeout, TimeSpan.FromSeconds(10));
+            await Assert.ThrowsAsync<Renci.SshNet.Common.SshOperationTimeoutException>(() => timedCommand.WaitAsync(TimeSpan.FromSeconds(30)));
+            Assert.InRange(timeoutWatch.Elapsed.TotalSeconds, 24, 30);
             checks.Add("Production 25-second command timeout observed");
 
             Mode();
