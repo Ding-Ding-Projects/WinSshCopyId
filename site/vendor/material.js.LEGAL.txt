@@ -46,6 +46,7 @@ lit-html/is-server.js:
 @material/web/ripple/internal/ripple.js:
 @material/web/ripple/ripple.js:
 @material/web/internal/controller/string-converter.js:
+@material/web/internal/controller/is-rtl.js:
   /**
    * @license
    * Copyright 2022 Google LLC
@@ -73,6 +74,8 @@ lit-html/is-server.js:
 @material/web/tabs/internal/tabs-styles.cssresult.js:
 @material/web/tabs/internal/primary-tab-styles.cssresult.js:
 @material/web/tabs/internal/tab-styles.cssresult.js:
+@material/web/iconbutton/internal/shared-styles.cssresult.js:
+@material/web/iconbutton/internal/standard-styles.cssresult.js:
   /**
    * @license
    * Copyright 2026 Google LLC
@@ -129,6 +132,7 @@ lit-html/is-server.js:
 @material/web/textfield/outlined-text-field.js:
 @material/web/switch/internal/switch.js:
 @material/web/switch/switch.js:
+@material/web/iconbutton/icon-button.js:
   /**
    * @license
    * Copyright 2021 Google LLC
@@ -161,6 +165,7 @@ lit-html/directives/live.js:
    */
 
 @material/web/checkbox/checkbox.js:
+@material/web/iconbutton/internal/icon-button.js:
   /**
    * @license
    * Copyright 2018 Google LLC

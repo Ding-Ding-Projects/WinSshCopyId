@@ -2,72 +2,292 @@
   "schemaVersion": 1,
   "surface": "documentation",
   "rows": [
-    {"id":"language","status":"incomplete"},
-    {"id":"humour-and-emoji","status":"incomplete"},
-    {"id":"personal-wording","status":"partial","implementation":"site/core.mjs","tests":"tests/site/core.test.mjs"},
-    {"id":"shared-presentation-mode","status":"incomplete"},
-    {"id":"narration-and-voices","status":"incomplete"},
-    {"id":"scheduled-settings","status":"incomplete"},
-    {"id":"display-name","status":"incomplete"},
-    {"id":"attention-modes","status":"incomplete"},
-    {"id":"dim-sum-catalogue","status":"incomplete"},
-    {"id":"material-components","status":"incomplete"},
-    {"id":"workflow-navigation","status":"incomplete"},
-    {"id":"motion","status":"incomplete"},
-    {"id":"appearance-editors","status":"incomplete"},
-    {"id":"colour-picker","status":"incomplete"},
-    {"id":"logo-customization","status":"incomplete"},
-    {"id":"overlay-panels","status":"incomplete"},
-    {"id":"collapsible-filters","status":"incomplete"},
-    {"id":"accessibility-and-sizing","status":"incomplete"},
-    {"id":"functional-controls","status":"incomplete"},
-    {"id":"tabs-and-groups","status":"incomplete"},
-    {"id":"regex-workbench","status":"incomplete"},
-    {"id":"command-palette","status":"incomplete"},
-    {"id":"context-menus","status":"incomplete"},
-    {"id":"menu-shortcuts","status":"incomplete"},
-    {"id":"rich-controls","status":"incomplete"},
-    {"id":"guided-forms","status":"incomplete"},
-    {"id":"settings-explanations","status":"incomplete"},
-    {"id":"editor-presets","status":"incomplete"},
-    {"id":"destructive-confirmation","status":"incomplete"},
-    {"id":"element-locks","status":"incomplete"},
-    {"id":"support-tickets","status":"incomplete"},
-    {"id":"unlock-recovery","status":"incomplete"},
-    {"id":"authenticator","status":"incomplete"},
-    {"id":"qr-pairing","status":"incomplete"},
-    {"id":"honest-monetization","status":"partial"},
-    {"id":"local-history","status":"incomplete"},
-    {"id":"exports","status":"incomplete"},
-    {"id":"bulk-actions","status":"incomplete"},
-    {"id":"changelog","status":"incomplete"},
-    {"id":"complete-documentation","status":"partial","implementation":"scripts/build-site.mjs","tests":"tests/site/core.test.mjs"},
-    {"id":"rendered-markdown","status":"partial","implementation":"site/core.mjs","tests":"tests/site/core.test.mjs"},
-    {"id":"notifications","status":"incomplete"},
-    {"id":"file-conversion-equivalent","status":"incomplete"},
-    {"id":"server-management-equivalent","status":"incomplete"},
-    {"id":"model-management-equivalent","status":"incomplete"},
-    {"id":"external-editor-handoff","status":"incomplete"},
-    {"id":"download-handoff","status":"incomplete"},
-    {"id":"publishing-equivalent","status":"incomplete"},
-    {"id":"operation-recovery","status":"incomplete"},
-    {"id":"coverage-enforcement","status":"partial"},
-    {"id":"front-provenance","status":"partial","implementation":"scripts/build-site.mjs"},
-    {"id":"product-captures","status":"incomplete"},
-    {"id":"screen-recording","status":"incomplete"},
-    {"id":"design-parity","status":"incomplete"},
-    {"id":"design-record","status":"partial","implementation":"design/site/HANDOFF.md"},
-    {"id":"responsive-matrix","status":"incomplete"},
-    {"id":"public-capture-gallery","status":"incomplete"},
-    {"id":"product-boundary","status":"partial"},
-    {"id":"touch-layout","status":"incomplete"},
-    {"id":"verified-installer-link","status":"partial","implementation":"scripts/build-site.mjs","tests":"tests/site/core.test.mjs"},
-    {"id":"feature-articles","status":"partial"},
-    {"id":"local-assets","status":"partial"},
-    {"id":"social-preview","status":"incomplete"},
-    {"id":"repository-homepage","status":"incomplete"},
-    {"id":"private-wording-boundary","status":"partial"},
-    {"id":"status-integration","status":"incomplete"},
-    {"id":"wiki-content","status":"partial","implementation":"docs/wiki/Home.md","tests":"tests/site/core.test.mjs"}
+    {
+      "id": "language",
+      "status": "incomplete"
+    },
+    {
+      "id": "humour-and-emoji",
+      "status": "incomplete"
+    },
+    {
+      "id": "personal-wording",
+      "status": "partial",
+      "implementation": "site/core.mjs",
+      "tests": "tests/site/core.test.mjs"
+    },
+    {
+      "id": "shared-presentation-mode",
+      "status": "incomplete"
+    },
+    {
+      "id": "narration-and-voices",
+      "status": "incomplete"
+    },
+    {
+      "id": "scheduled-settings",
+      "status": "incomplete"
+    },
+    {
+      "id": "display-name",
+      "status": "incomplete"
+    },
+    {
+      "id": "attention-modes",
+      "status": "incomplete"
+    },
+    {
+      "id": "dim-sum-catalogue",
+      "status": "incomplete"
+    },
+    {
+      "id": "material-components",
+      "status": "incomplete"
+    },
+    {
+      "id": "workflow-navigation",
+      "status": "incomplete"
+    },
+    {
+      "id": "motion",
+      "status": "incomplete"
+    },
+    {
+      "id": "appearance-editors",
+      "status": "incomplete"
+    },
+    {
+      "id": "colour-picker",
+      "status": "incomplete"
+    },
+    {
+      "id": "logo-customization",
+      "status": "incomplete"
+    },
+    {
+      "id": "overlay-panels",
+      "status": "incomplete"
+    },
+    {
+      "id": "collapsible-filters",
+      "status": "incomplete"
+    },
+    {
+      "id": "accessibility-and-sizing",
+      "status": "incomplete"
+    },
+    {
+      "id": "functional-controls",
+      "status": "incomplete"
+    },
+    {
+      "id": "tabs-and-groups",
+      "status": "incomplete"
+    },
+    {
+      "id": "regex-workbench",
+      "status": "incomplete"
+    },
+    {
+      "id": "command-palette",
+      "status": "incomplete"
+    },
+    {
+      "id": "context-menus",
+      "status": "incomplete"
+    },
+    {
+      "id": "menu-shortcuts",
+      "status": "incomplete"
+    },
+    {
+      "id": "rich-controls",
+      "status": "incomplete"
+    },
+    {
+      "id": "guided-forms",
+      "status": "incomplete"
+    },
+    {
+      "id": "settings-explanations",
+      "status": "incomplete"
+    },
+    {
+      "id": "editor-presets",
+      "status": "incomplete"
+    },
+    {
+      "id": "destructive-confirmation",
+      "status": "incomplete"
+    },
+    {
+      "id": "element-locks",
+      "status": "incomplete"
+    },
+    {
+      "id": "support-tickets",
+      "status": "incomplete"
+    },
+    {
+      "id": "unlock-recovery",
+      "status": "incomplete"
+    },
+    {
+      "id": "authenticator",
+      "status": "incomplete"
+    },
+    {
+      "id": "qr-pairing",
+      "status": "incomplete"
+    },
+    {
+      "id": "honest-monetization",
+      "status": "partial"
+    },
+    {
+      "id": "local-history",
+      "status": "incomplete"
+    },
+    {
+      "id": "exports",
+      "status": "incomplete"
+    },
+    {
+      "id": "bulk-actions",
+      "status": "incomplete"
+    },
+    {
+      "id": "changelog",
+      "status": "incomplete"
+    },
+    {
+      "id": "complete-documentation",
+      "status": "partial",
+      "implementation": "scripts/build-site.mjs",
+      "tests": "tests/site/core.test.mjs"
+    },
+    {
+      "id": "rendered-markdown",
+      "status": "partial",
+      "implementation": "site/core.mjs",
+      "tests": "tests/site/core.test.mjs"
+    },
+    {
+      "id": "notifications",
+      "status": "incomplete"
+    },
+    {
+      "id": "file-conversion-equivalent",
+      "status": "incomplete"
+    },
+    {
+      "id": "server-management-equivalent",
+      "status": "incomplete"
+    },
+    {
+      "id": "model-management-equivalent",
+      "status": "incomplete"
+    },
+    {
+      "id": "external-editor-handoff",
+      "status": "incomplete"
+    },
+    {
+      "id": "download-handoff",
+      "status": "incomplete"
+    },
+    {
+      "id": "publishing-equivalent",
+      "status": "incomplete"
+    },
+    {
+      "id": "operation-recovery",
+      "status": "incomplete"
+    },
+    {
+      "id": "coverage-enforcement",
+      "status": "partial"
+    },
+    {
+      "id": "front-provenance",
+      "status": "partial",
+      "implementation": "scripts/build-site.mjs"
+    },
+    {
+      "id": "product-captures",
+      "status": "incomplete"
+    },
+    {
+      "id": "screen-recording",
+      "status": "incomplete"
+    },
+    {
+      "id": "design-parity",
+      "status": "incomplete"
+    },
+    {
+      "id": "design-record",
+      "status": "partial",
+      "implementation": "design/site/HANDOFF.md"
+    },
+    {
+      "id": "responsive-matrix",
+      "status": "incomplete"
+    },
+    {
+      "id": "public-capture-gallery",
+      "status": "incomplete"
+    },
+    {
+      "id": "product-boundary",
+      "status": "partial"
+    },
+    {
+      "id": "touch-layout",
+      "status": "incomplete"
+    },
+    {
+      "id": "verified-installer-link",
+      "status": "partial",
+      "implementation": "scripts/build-site.mjs",
+      "tests": "tests/site/core.test.mjs"
+    },
+    {
+      "id": "feature-articles",
+      "status": "partial"
+    },
+    {
+      "id": "local-assets",
+      "status": "partial"
+    },
+    {
+      "id": "social-preview",
+      "status": "incomplete"
+    },
+    {
+      "id": "repository-homepage",
+      "status": "incomplete"
+    },
+    {
+      "id": "private-wording-boundary",
+      "status": "partial"
+    },
+    {
+      "id": "status-integration",
+      "status": "incomplete"
+    },
+    {
+      "id": "wiki-content",
+      "status": "partial",
+      "implementation": "docs/wiki/Home.md",
+      "tests": "tests/site/core.test.mjs"
+    },
+    {
+      "id": "info-icon-guidance",
+      "status": "partial",
+      "implementation": "site/guidance.mjs",
+      "tests": "tests/site/guidance.test.mjs",
+      "reason": "Current control families have contextual entries; full action-specific wizards and playgrounds remain incomplete."
+    }
   ]
 }

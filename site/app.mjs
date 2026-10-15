@@ -1,3 +1,4 @@
+import {installGuidance} from './guidance.mjs';
 import './vendor/material.js';
 import {escapeHtml as esc,validateWording,renderMarkdown,headingId,publicRouteTitle,bindSkipLink} from './core.mjs';
 import {copy,humour} from './locales.mjs';
@@ -73,4 +74,7 @@ $('menu').onclick=()=>{const open=document.body.dataset.navOpen!=='true';documen
 
 
 bindSkipLink(document.querySelector('.skip'),$('main'));
+
+
+installGuidance(document.body,()=>state.language);
 

@@ -6,3 +6,10 @@
 aside .search-row{display:flex;flex-direction:column;align-items:stretch}
 aside .search-row md-outlined-text-field{width:100%;flex:auto}
 md-outlined-text-field{--md-outlined-text-field-input-text-font:Segoe UI,Arial,sans-serif;--md-outlined-text-field-label-text-font:Segoe UI,Arial,sans-serif;--md-outlined-text-field-supporting-text-font:Segoe UI,Arial,sans-serif}
+/* Each optional help entry stays above its exact target. */
+.guided-control{position:relative;min-width:0;max-width:100%;display:flex;flex-direction:column;align-items:flex-start;flex:0 1 auto}
+.guided-control>md-outlined-text-field{width:100%}.info-entry{width:44px;height:44px;--md-icon-button-state-layer-width:44px;--md-icon-button-state-layer-height:44px}
+.info-tooltip{display:none;position:absolute;top:40px;left:0;background:var(--panel);border:1px solid var(--line);padding:.5rem;border-radius:8px;z-index:10;max-width:240px;overflow-wrap:anywhere}
+.info-entry:hover+.info-tooltip,.info-entry:focus-within+.info-tooltip{display:block}.guidance-panel{width:100%;min-width:0;padding:1rem;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere}.guidance-panel[hidden]{display:none}.guidance-panel h3{margin:0}.guidance-panel md-outlined-text-field{width:100%}
+.nav-row{align-items:flex-start;flex-wrap:wrap}.nav-row>.guided-control{max-width:100%;min-width:0;flex:1 1 130px}.nav-row md-text-button{max-width:100%;height:auto;min-height:44px;white-space:normal;overflow-wrap:anywhere;--md-text-button-label-text-line-height:1.4}
+.nav-items{min-width:0}.search-row>.guided-control:has(md-outlined-text-field){flex:1;min-width:0;width:100%}.setting>.guided-control{width:100%}.header-actions>.guided-control{max-width:100%}.guided-control:has(>a.skip){position:absolute;top:-120px}.guided-control:has(>a.skip):focus-within{top:0;z-index:20;background:var(--panel)}.guided-control>a.skip{position:static}
