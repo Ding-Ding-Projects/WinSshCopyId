@@ -3,6 +3,47 @@ using Xunit;
 
 public sealed class ProfileServiceTests
 {
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("server", "")]
+    [InlineData("", "user")]
+    [InlineData("server", "user")]
+    public void IncompleteFormsRoundTrip(string hosts, string username)
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            SettingsStore.Export(path, new AppSettings { Hosts = hosts, Username = username });
+            var result = SettingsStore.Import(path);
+            Assert.Equal(hosts, result.Hosts); Assert.Equal(username, result.Username);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void LegacyIncompleteProfileLoadsWithoutCredentials()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, "{\"App\":\"WinSshCopyId\",\"ProtectedPassword\":\"old\",\"RememberPassword\":true}");
+            var result = SettingsStore.Import(path);
+            Assert.Equal("", result.Username); Assert.Null(result.ProtectedPassword); Assert.False(result.RememberPassword);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void NonemptyInvalidUsernameRemainsRejected()
+    {
+        string path = Path.GetTempFileName();
+        try
+        {
+            SettingsStore.Export(path, new AppSettings { Username = "-bad" });
+            Assert.Throws<ArgumentException>(() => SettingsStore.Import(path));
+        }
+        finally { File.Delete(path); }
+    }
     [Fact]
     public void ApplyRetainsReceivingAppearanceAndDropsCredentials()
     {

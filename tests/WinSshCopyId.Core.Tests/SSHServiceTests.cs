@@ -65,7 +65,62 @@ public sealed class SSHServiceTests
     [Fact]
     public void IdentityPathIsQuotedExactly()
     {
-        Assert.Contains("-i \"C:\\keys\\a b\"", SshInput.BuildConnectCommand("host", 22, "user", @"C:\keys\a b"));
+        Assert.Contains("-i 'C:\\keys\\a b'", SshInput.BuildConnectCommand("host", 22, "user", @"C:\keys\a b"));
+    }
+
+    [Theory]
+    [InlineData(@"C:\keys\$(Get-Date).key")]
+    [InlineData(@"C:\keys\$value`x.key")]
+    [InlineData(@"C:\keys\owner's.key")]
+    public void PowerShellParserTreatsIdentityAsLiteral(string path)
+    {
+        string command = SshInput.BuildConnectCommand("host", 22, "user$", path);
+        string encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(command));
+        string expected = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(path));
+        string script = "$source=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + encoded + "'));" +
+            "$expected=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + expected + "'));" +
+            "$tokens=$null;$errors=$null;$ast=[System.Management.Automation.Language.Parser]::ParseInput($source,[ref]$tokens,[ref]$errors);" +
+            "if($errors.Count){exit 1};$cmd=$ast.EndBlock.Statements[0].PipelineElements[0];" +
+            "if($cmd.CommandElements[4] -isnot [System.Management.Automation.Language.StringConstantExpressionAst]){exit 2};" +
+            "if($cmd.CommandElements[4].Value -cne $expected){exit 3};exit 0";
+        var start = new System.Diagnostics.ProcessStartInfo("pwsh") { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
+        start.ArgumentList.Add("-NoProfile"); start.ArgumentList.Add("-NonInteractive"); start.ArgumentList.Add("-EncodedCommand");
+        start.ArgumentList.Add(Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script)));
+        using var process = System.Diagnostics.Process.Start(start)!;
+        Assert.True(process.WaitForExit(15000));
+        Assert.Equal(0, process.ExitCode);
+    }
+
+    [Fact]
+    public void PublicKeyWireBodyIsRequiredAndFullyConsumed()
+    {
+        byte[] valid = Convert.FromBase64String(Key.Split(' ')[1]);
+        Assert.Equal(Key, SshInput.ValidatePublicKey(Key));
+        foreach (byte[] invalid in new[] { valid[..15], valid[..^1], valid.Concat(new byte[] { 0 }).ToArray(),
+            valid[..15].Concat(new byte[] { 0, 0, 0, 31 }).Concat(new byte[31]).ToArray() })
+            Assert.Throws<ArgumentException>(() => SshInput.ValidatePublicKey("ssh-ed25519 " + Convert.ToBase64String(invalid)));
+        Assert.Throws<ArgumentException>(() => SshInput.ValidatePublicKey("ssh-unknown " + Convert.ToBase64String(Wire(System.Text.Encoding.ASCII.GetBytes("ssh-unknown")))));
+    }
+
+    [Fact]
+    public void AcceptsRealRsaAndEcdsaPublicFixtures()
+    {
+        var rsa = OpenSshKey.GenerateRsa(2048, "fixture");
+        Assert.Equal(rsa.PublicLine, SshInput.ValidatePublicKey(rsa.PublicLine));
+        using var ec = System.Security.Cryptography.ECDsa.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        var parameters = ec.ExportParameters(false);
+        byte[] point = new byte[] { 4 }.Concat(parameters.Q.X!).Concat(parameters.Q.Y!).ToArray();
+        byte[] blob = Wire(System.Text.Encoding.ASCII.GetBytes("ecdsa-sha2-nistp256"))
+            .Concat(Wire(System.Text.Encoding.ASCII.GetBytes("nistp256"))).Concat(Wire(point)).ToArray();
+        string line = "ecdsa-sha2-nistp256 " + Convert.ToBase64String(blob);
+        Assert.Equal(line, SshInput.ValidatePublicKey(line));
+    }
+
+    private static byte[] Wire(byte[] value)
+    {
+        byte[] length = new byte[4];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(length, (uint)value.Length);
+        return length.Concat(value).ToArray();
     }
 
     private static DeploymentRequest Request(string host) => new(host, 22, "user", Key, "identity");

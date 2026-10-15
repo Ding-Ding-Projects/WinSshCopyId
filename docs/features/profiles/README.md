@@ -1,6 +1,6 @@
 # Profiles and credentials
 
-Settings schema version 2 remains compatible with earlier fields. Saves use a temporary sibling, flush to storage and atomic replacement. Portable exports include only connection settings and a product/schema marker. Credentials and appearance preferences are excluded. Import clears credentials even from older files; ApplyProfile preserves the receiving user's theme and auto-save preference.
+Settings schema version 2 remains compatible with earlier fields. Saves use a temporary sibling, flush to storage and atomic replacement. Portable exports include only connection settings and a product/schema marker. Credentials and appearance preferences are excluded. Empty and partial connection forms remain portable; nonempty usernames and endpoints are validated. Import clears credentials even from older files; ApplyProfile preserves the receiving user's theme and auto-save preference.
 
 ICredentialStore exposes Get, Set and Delete for named credentials. WinCredentialStore uses Windows Credential Manager generic credentials under the WinSshCopyId/ target prefix. Access errors are reported rather than treated as absent credentials. Services must retrieve credentials only for the current operation and must never put plaintext into profile exports, logs or operation history.
 

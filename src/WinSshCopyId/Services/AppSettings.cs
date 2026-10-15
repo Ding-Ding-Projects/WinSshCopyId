@@ -151,7 +151,7 @@ public static class SettingsStore
         }
         if (loaded.SchemaVersion is < 1 or > 2) throw new InvalidDataException("Unsupported profile version.");
         _ = HostTarget.ParseList(loaded.Hosts, loaded.Port);
-        SshInput.ValidateUser(loaded.Username);
+        if (!string.IsNullOrEmpty(loaded.Username)) SshInput.ValidateUser(loaded.Username);
         foreach (var target in HostTarget.ParseList(loaded.Hosts, loaded.Port)) SshInput.ValidateEndpoint(target.Host, target.Port);
         // Imported profiles never carry credentials or appearance preferences.
         loaded.Theme = "System";
