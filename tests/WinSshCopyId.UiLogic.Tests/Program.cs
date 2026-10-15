@@ -55,4 +55,15 @@ using(var cancellation=new CancellationTokenSource())
     var result=await RetryPhaseCoordinator.RunAsync(token=>{touched=true;return Task.CompletedTask;},token=>Task.FromResult(true),token=>Task.CompletedTask,cancellation.Token);
     Check(result==RetryPhaseResult.Cancelled&&!touched,"pre-cancelled batch starts no phase");
 }
+ControlGuidance.Validate(ControlGuidance.All);ControlGuidance.ValidateAttachments(ControlGuidance.RequiredIds);
+Check(ControlGuidance.InventoryId=="info-icon-guidance","separate guidance inventory identity");
+foreach(var id in ControlGuidance.RequiredIds)
+{
+    bool rejected=false;try{ControlGuidance.Validate(ControlGuidance.All.Where(x=>x.Id!=id));}catch(InvalidDataException){rejected=true;}Check(rejected,"omitted guidance descriptor: "+id);
+    rejected=false;try{ControlGuidance.ValidateAttachments(ControlGuidance.RequiredIds.Where(x=>x!=id));}catch(InvalidDataException){rejected=true;}Check(rejected,"omitted attached info entry: "+id);
+}
+var portGuide=ControlGuidance.Get("connection.port");
+Check(portGuide.Preview("22")=="Valid SSH port: 22"&&portGuide.Preview("65536").StartsWith("Enter"),"port playground validates range");
+var original=portGuide.Preview(portGuide.Example);_ = portGuide.Preview("bad");Check(portGuide.Preview(portGuide.Example)==original,"reset example has no shared mutable draft");
+Check(ControlGuidance.Get("connection.install").Preview("example.test").EndsWith("No real action was performed."),"consequential playground is an explicit synthetic preview");
 Console.WriteLine($"PASS {passed} UI logic behavioral checks. No native UI, filesystem key resolution or network operation was used.");

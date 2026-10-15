@@ -89,7 +89,20 @@ public sealed partial class MainWindow : Window
     }
     private Button AsyncAction(string label,Func<Task> action,bool primary=false)=>Action(label,async()=>{try{if(busy){Show("Wait for the active operation or cancel it before starting another action.");return;}await action();}catch(OperationCanceledException){Show("Operation cancelled.");}catch(Exception ex){Show(SafeError(ex),true);}},primary);
     private static string SafeError(Exception ex)=>ex switch {ArgumentException=>ex.Message,InvalidDataException=>ex.Message,UnauthorizedAccessException=>"Access was denied. Check the selected destination and permissions.",IOException=>"The file operation could not complete. The previous state has been retained.",_=>"The operation could not complete. Review its inputs and try again."};
-    private StackPanel Row(params UIElement[] elements){var panel=new StackPanel {Spacing=8};foreach(var e in elements)panel.Children.Add(e);return panel;}
+    private readonly List<GuidedControl> guidanceControls=new();
+    private readonly HashSet<string> attachedGuidance=new(StringComparer.Ordinal);
+    private UIElement WithGuidance(UIElement element)
+    {
+        string? id=element==nameBox?"connection.name":element==hostsBox?"connection.hosts":element==userBox?"connection.user":element==portBox?"connection.port":element==passwordBox?"connection.password":element==rememberPassword?"connection.remember":null;
+        if(id is null&&element is FrameworkElement framework)
+        {
+            if(localizedHeaders.TryGetValue(framework,out var header))id=header switch{"Display name"=>"settings.name","English funny level"=>"settings.english-humour","Cantonese funny level"=>"settings.cantonese-humour",_=>null};
+            if(id is null&&localized.TryGetValue(framework,out var label))id=label switch{"Install public key"=>"connection.install","Save connection"=>"connection.save","Import profile"=>"profile.import","Export profile"=>"profile.export","Choose public key" or "Import public key"=>"key.pick","Generate key"=>"key.generate","Export public key"=>"key.export","Cancel"=>"operation.cancel","Retry failed targets"=>"result.retry","Copy command"=>"result.copy","Export results"=>"result.export","Reduced motion"=>"settings.reduced-motion","Show accessibility control"=>"settings.accessibility","Save settings"=>"settings.save",_=>null};
+        }
+        if(id is null)return element;
+        var wrapped=new GuidedControl(element,ControlGuidance.Get(id),()=>preferences.Language);guidanceControls.Add(wrapped);attachedGuidance.Add(id);return wrapped;
+    }
+    private StackPanel Row(params UIElement[] elements){var panel=new StackPanel {Spacing=8};foreach(var e in elements)panel.Children.Add(WithGuidance(e));return panel;}
     private Border Card(UIElement content)=>new(){Child=content,Style=StyleFor("MaterialSurfaceStyle")};
     private ScopedSearchBox Search(string id,string label,EventHandler? changed=null)
     {
@@ -129,12 +142,14 @@ public sealed partial class MainWindow : Window
     private void BuildPages()
     {
         if(pages.Count>0)return;
+        ControlGuidance.Validate(ControlGuidance.All);
         buildingPages=true;
         try
         {
         var navSearch=Search("tabs.current","Workspace tabs",(_,_)=>FilterNavigation());NavigationPanel.Children.Add(navSearch);
         foreach(var name in destinations){var b=Action(name,()=>Navigate(name));b.HorizontalAlignment=HorizontalAlignment.Stretch;b.Tag=name;NavigationPanel.Children.Add(b);}
         BuildConnections();BuildKeys();BuildResults();BuildSettings();BuildTools();BuildHistory();BuildHelp();
+        ControlGuidance.ValidateAttachments(attachedGuidance);
         }
         finally{buildingPages=false;}
         RefreshLocalization();Adapt();
@@ -161,8 +176,8 @@ public sealed partial class MainWindow : Window
         connectionGrid.Children.Add(recordsSurface);
         var fields=Row(Search("connections.options","Search options"),nameBox,hostsBox,userBox,portBox,keyLabel,AsyncAction("Choose public key",PickKeyAsync),passwordBox,rememberPassword);
         installButton=AsyncAction("Install public key",()=>DeployAsync(null),true);cancelButton=Action("Cancel",CancelOperation);cancelButton.IsEnabled=false;
-        installButton.IsEnabled=!data.IsEvidence;fields.Children.Add(installButton);fields.Children.Add(cancelButton);fields.Children.Add(progress);
-        fields.Children.Add(AsyncAction("Import profile",ImportProfileAsync));fields.Children.Add(AsyncAction("Export profile",ExportProfileAsync));fields.Children.Add(Text("No credential is included in a portable profile."));
+        installButton.IsEnabled=!data.IsEvidence;fields.Children.Add(WithGuidance(installButton));fields.Children.Add(WithGuidance(cancelButton));fields.Children.Add(progress);
+        fields.Children.Add(WithGuidance(AsyncAction("Import profile",ImportProfileAsync)));fields.Children.Add(WithGuidance(AsyncAction("Export profile",ExportProfileAsync)));fields.Children.Add(Text("No credential is included in a portable profile."));
         var detail=Card(fields);Grid.SetColumn(detail,1);connectionGrid.Children.Add(detail);pages["Connections"]=Row(connectionGrid);RefreshConnections();UpdateKeyLabel();
     }
     private void Adapt()
@@ -386,17 +401,17 @@ public sealed partial class MainWindow : Window
     private void BuildSettings()
     {
         var panel=Row(Search("settings.general","Search options"));
-        var displayName=new TextBox{Header=L("Display name"),Text=preferences.DisplayName};localizedHeaders[displayName]="Display name";panel.Children.Add(displayName);
+        var displayName=new TextBox{Header=L("Display name"),Text=preferences.DisplayName};localizedHeaders[displayName]="Display name";panel.Children.Add(WithGuidance(displayName));
         void Choices<T>(string heading,IEnumerable<T> values,T current,Action<T> apply) where T:struct,Enum
         {var group=Row(Text(heading));foreach(var value in values){var radio=new RadioButton{Content=L(value.ToString()),IsChecked=EqualityComparer<T>.Default.Equals(current,value),GroupName=heading};localized[radio]=value.ToString();radio.Checked+=(_,_)=>apply(value);group.Children.Add(radio);}panel.Children.Add(Card(group));}
         Choices("Theme",Enum.GetValues<WorkspaceTheme>(),preferences.Theme,v=>{preferences=preferences with{Theme=v};ApplyPreferences();});
         Choices("Language",Enum.GetValues<WorkspaceLanguage>(),preferences.Language,v=>preferences=preferences with{Language=v});
         Choices("Density",Enum.GetValues<WorkspaceDensity>(),preferences.Density,v=>{preferences=preferences with{Density=v};ApplyPreferences();});
-        var en=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.EnglishFunnyLevel,Header=L("English funny level")};localizedHeaders[en]="English funny level";en.ValueChanged+=(_,_)=>{preferences=preferences with{EnglishFunnyLevel=(int)en.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(en);
-        var yue=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.CantoneseFunnyLevel,Header=L("Cantonese funny level")};localizedHeaders[yue]="Cantonese funny level";yue.ValueChanged+=(_,_)=>{preferences=preferences with{CantoneseFunnyLevel=(int)yue.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(yue);
+        var en=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.EnglishFunnyLevel,Header=L("English funny level")};localizedHeaders[en]="English funny level";en.ValueChanged+=(_,_)=>{preferences=preferences with{EnglishFunnyLevel=(int)en.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(WithGuidance(en));
+        var yue=new Slider{Minimum=1,Maximum=5,StepFrequency=1,Value=preferences.CantoneseFunnyLevel,Header=L("Cantonese funny level")};localizedHeaders[yue]="Cantonese funny level";yue.ValueChanged+=(_,_)=>{preferences=preferences with{CantoneseFunnyLevel=(int)yue.Value};StatusText.Text=WorkspaceText.Ready(preferences);};panel.Children.Add(WithGuidance(yue));
         panel.Children.Add(Text("Funny levels style message tone; operation facts do not change. Both languages default to level 5. Full message-category coverage is still being implemented."));
-        var reduced=new CheckBox{Content=L("Reduced motion"),IsChecked=preferences.ReducedMotion};var visible=new CheckBox{Content=L("Show accessibility control"),IsChecked=preferences.AccessibilityButtonVisible};localized[reduced]="Reduced motion";localized[visible]="Show accessibility control";panel.Children.Add(reduced);panel.Children.Add(visible);
-        panel.Children.Add(AsyncAction("Save settings",async()=>{var candidate=(preferences with{DisplayName=displayName.Text.Trim(),ReducedMotion=reduced.IsChecked==true,AccessibilityButtonVisible=visible.IsChecked==true}).Validate();await data.Settings.SaveAsync(candidate);preferences=candidate;ApplyPreferences();RefreshLocalization();Navigate("Settings");Show(L("Settings saved."));},true));
+        var reduced=new CheckBox{Content=L("Reduced motion"),IsChecked=preferences.ReducedMotion};var visible=new CheckBox{Content=L("Show accessibility control"),IsChecked=preferences.AccessibilityButtonVisible};localized[reduced]="Reduced motion";localized[visible]="Show accessibility control";panel.Children.Add(WithGuidance(reduced));panel.Children.Add(WithGuidance(visible));
+        panel.Children.Add(WithGuidance(AsyncAction("Save settings",async()=>{var candidate=(preferences with{DisplayName=displayName.Text.Trim(),ReducedMotion=reduced.IsChecked==true,AccessibilityButtonVisible=visible.IsChecked==true}).Validate();await data.Settings.SaveAsync(candidate);preferences=candidate;ApplyPreferences();RefreshLocalization();Navigate("Settings");Show(L("Settings saved."));},true)));
         panel.Children.Add(Text("Stored in the private workspace settings record. Compiled defaults: system theme, comfortable density, English, 14-point UI text. Advanced appearance, per-element locks and schedules remain incomplete."));pages["Settings"]=Row(Card(panel));
     }
     private void KeySelected(object sender,SelectionChangedEventArgs e){if(keyList.SelectedItem is KeyEntry key){selectedKey=key;UpdateKeyLabel();}}
@@ -411,6 +426,7 @@ public sealed partial class MainWindow : Window
         foreach(var pair in searches)if(searchLabels.TryGetValue(pair.Key,out var label))pair.Value.SetPlaceholder(L(label));
         foreach(var pair in localizedHeaders){if(pair.Key is TextBox field)field.Header=L(pair.Value);else if(pair.Key is Slider slider)slider.Header=L(pair.Value);}
         nameBox.Header=L("Display name");hostsBox.Header=L("Hosts");userBox.Header=L("Username");portBox.Header=L("Port");passwordBox.Header=L("Password");rememberPassword.Content=L("Remember password in Credential Manager");
+        foreach(var guidance in guidanceControls)guidance.RefreshLanguage();
         PageTitle.Text=L(route);UpdateKeyLabel();RefreshConnections();RefreshKeys();RefreshResults();RefreshHistory();
     }
     private void BuildTools()
