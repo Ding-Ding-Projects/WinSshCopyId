@@ -27,5 +27,16 @@ foreach(var mole in round.Moles.Take(6)){now=roundStart+TimeSpan.FromMillisecond
 now=roundStart+TimeSpan.FromSeconds(10);Check(ladder.Submit("d",round.Nonce),"mole win after duration");Check(engine.Status("d").Locked,"mole never authenticates");
 engine.Create("e",LockPolicy.Pin,["1234"],TimeSpan.FromSeconds(5),1);engine.Authenticate("e",["0000"]);var expired=ladder.Next("e")!;now+=TimeSpan.FromSeconds(31);Check(!ladder.Submit("e",expired.Nonce,"0"),"expired challenge");
 now+=TimeSpan.FromHours(1);Check(engine.Status("a").AttemptsRemaining==1,"clock restores same budget");engine.Authenticate("a",["0000"]);Check(ladder.Next("a")!=null,"rolling budget replenishes");
+var definitions=new List<ToyLockDefinition>();using var original=new ToyLockEngine(vault,()=>now);using var originalLadder=new UnlockLadder(original,()=>now);definitions.Add(original.Create("persistent",LockPolicy.Pin,["2468"],TimeSpan.FromSeconds(5),1));
+for(int i=0;i<3;i++){original.Authenticate("persistent",["wrong"]);var c=originalLadder.Next("persistent")!;originalLadder.Submit("persistent",c.Nonce,Array.IndexOf(c.Choices.ToArray(),c.Prompt[23..]).ToString());}
+original.Authenticate("persistent",["wrong"]);var lockSnapshot=original.ExportBudgets();var ladderSnapshot=originalLadder.ExportBudgets();
+using var restarted=new ToyLockEngine(vault,()=>now);foreach(var d in definitions)restarted.Load(d);restarted.ImportBudgets(lockSnapshot);using var restartedLadder=new UnlockLadder(restarted,()=>now);restartedLadder.ImportBudgets(ladderSnapshot);
+Check(restarted.Status("persistent")==original.Status("persistent"),"restart lock budgets");Check(restartedLadder.Next("persistent")==null,"restart skip budgets");
+var backupTime=now;now-=TimeSpan.FromSeconds(1);try{restarted.ImportBudgets(lockSnapshot);throw new Exception("rollback accepted");}catch(ArgumentException){checks++;}now=backupTime;
+var mutable=new Dictionary<LockFactor,string>{{LockFactor.Pin,definitions[0].References[LockFactor.Pin]}};restarted.Load(new("immutable",LockPolicy.Pin,mutable,TimeSpan.FromSeconds(5)));mutable[LockFactor.Pin]="missing";Check(restarted.Authenticate("immutable",["2468"]),"loaded immutable copy");
+try{restarted.Load(new("bad",LockPolicy.PinPassword,new Dictionary<LockFactor,string>{{LockFactor.Pin,"same"},{LockFactor.Password,"same"}},TimeSpan.FromSeconds(5)));throw new Exception("duplicate references accepted");}catch(ArgumentException){checks++;}
+Check(!restarted.Authenticate("immutable",[new string('x',1025)]),"overlong answer rejected");
+restartedLadder.Dispose();try{restartedLadder.Next("persistent");throw new Exception("disposed ladder usable");}catch(ObjectDisposedException){checks++;}
 var store=new AuthenticatorStore(vault);var entry=store.Register("Synthetic","Test",seed,otp,DateTimeOffset.FromUnixTimeSeconds(1234567890));Check(store.CurrentCode(entry,DateTimeOffset.FromUnixTimeSeconds(1234567890))==otp,"vault authenticator");store.Remove(entry);Check(!data.ContainsKey(entry.SecretReference),"remove entry");Console.WriteLine($"PASS: {checks} synthetic security assertions; RFC 4226 and RFC 6238 SHA-1/SHA-256/SHA-512 vectors verified.");
+
 
