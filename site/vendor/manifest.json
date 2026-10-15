@@ -1,0 +1,7 @@
+{
+  "package": "@material/web",
+  "version": "2.5.0",
+  "source": "https://github.com/material-components/material-web",
+  "sha256": "a0d24988711c6d77b5c3061b4c84ec5b386bcc8b11df7fc621f256abaa787a4f",
+  "bundler": "esbuild 0.28.2"
+}

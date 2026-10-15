@@ -16,7 +16,8 @@ Separate native candidate 817e9a555d9783c26c8b3cff4daa9e43672bb548 passed focuse
 150% normal/minimum UI checks. New profile-path and mixed-retry cancellation
 repairs require another source-bound build. Documentation candidate
 b028536cb94e616bb2af78a71fc34be617e86072 has eleven local checks and genuine
-browser evidence for its bounded foundation and repairs. The complete feature
+browser evidence for its now-integrated foundation and repairs. GitHub Pages is
+configured for workflow deployment, with live verification pending. The complete feature
 inventory remains incomplete. SSH loopback verification is active.
 
 Preserve all task branches and evidence. Integrate independently completed work,

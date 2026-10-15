@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">WinSshCopyId</title>
+  <desc id="desc">A key and a rightward transfer arrow on a calm blue rounded square.</desc>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#245FA6"/>
+  <circle cx="84" cy="99" r="27" fill="none" stroke="#FFFFFF" stroke-width="16"/>
+  <path d="M84 126v65m0-20h24m-24 20h18" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M130 114h66m-23-23 23 23-23 23" fill="none" stroke="#D9E7FF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

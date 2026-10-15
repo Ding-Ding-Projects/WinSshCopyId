@@ -22,7 +22,7 @@ native interaction, installation and full feature acceptance are separate result
 - Standard hosted `windows-2022` workflows build/package without tests or lint.
   New releases are normal releases; task branches cannot replace latest.
 
-## Separate native and documentation candidates
+## Native candidate and integrated documentation foundation
 
 - Native candidate `817e9a555d9783c26c8b3cff4daa9e43672bb548` built successfully.
   Genuine current-host checks passed Connections, Keys, Results, Settings,
@@ -34,11 +34,13 @@ native interaction, installation and full feature acceptance are separate result
   report 35 service tests, 58 workspace checks and 141 synthetic security assertions.
   A real loopback SSH fixture is exposing and repairing cancellation and RSA
   negotiation behavior; final results are pending.
-- Documentation candidate `b028536cb94e616bb2af78a71fc34be617e86072` has 17 complete
+- Integrated documentation source `b028536cb94e616bb2af78a71fc34be617e86072` has 17 complete
   articles/wiki chapters, locally bundled controls and an explicitly incomplete
   67-row inventory. Eleven local checks pass. Genuine hidden-browser checks cover
   desktop/320 px states and repaired title privacy, skip navigation and regex
-  semantics. No live deployment is claimed.
+  semantics. GitHub Pages is configured for workflow deployment; live delivery
+  is not yet verified. The workflow uses the root entrypoint's runtime bootstrap
+  and retains its output for one day.
 
 ## Remaining acceptance
 

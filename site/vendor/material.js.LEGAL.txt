@@ -1,0 +1,168 @@
+Bundled license information:
+
+@lit/reactive-element/decorators/custom-element.js:
+@lit/reactive-element/reactive-element.js:
+@lit/reactive-element/decorators/property.js:
+@lit/reactive-element/decorators/state.js:
+@lit/reactive-element/decorators/event-options.js:
+@lit/reactive-element/decorators/base.js:
+@lit/reactive-element/decorators/query.js:
+@lit/reactive-element/decorators/query-all.js:
+@lit/reactive-element/decorators/query-async.js:
+@lit/reactive-element/decorators/query-assigned-nodes.js:
+lit-html/lit-html.js:
+lit-element/lit-element.js:
+lit-html/directive.js:
+  /**
+   * @license
+   * Copyright 2017 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+@lit/reactive-element/css-tag.js:
+  /**
+   * @license
+   * Copyright 2019 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+@lit/reactive-element/decorators/query-assigned-elements.js:
+lit-html/directives/when.js:
+  /**
+   * @license
+   * Copyright 2021 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+lit-html/is-server.js:
+  /**
+   * @license
+   * Copyright 2022 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+@material/web/elevation/internal/elevation.js:
+@material/web/elevation/elevation.js:
+@material/web/ripple/internal/ripple.js:
+@material/web/ripple/ripple.js:
+@material/web/internal/controller/string-converter.js:
+  /**
+   * @license
+   * Copyright 2022 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
+
+@material/web/elevation/internal/elevation-styles.cssresult.js:
+@material/web/focus/internal/focus-ring-styles.cssresult.js:
+@material/web/ripple/internal/ripple-styles.cssresult.js:
+@material/web/button/internal/filled-styles.cssresult.js:
+@material/web/button/internal/shared-elevation-styles.cssresult.js:
+@material/web/button/internal/shared-styles.cssresult.js:
+@material/web/button/internal/outlined-styles.cssresult.js:
+@material/web/button/internal/text-styles.cssresult.js:
+@material/web/field/internal/outlined-styles.cssresult.js:
+@material/web/field/internal/shared-styles.cssresult.js:
+@material/web/textfield/internal/outlined-styles.cssresult.js:
+@material/web/textfield/internal/shared-styles.cssresult.js:
+@material/web/checkbox/internal/checkbox-styles.cssresult.js:
+@material/web/switch/internal/switch-styles.cssresult.js:
+@material/web/slider/internal/forced-colors-styles.cssresult.js:
+@material/web/slider/internal/slider-styles.cssresult.js:
+@material/web/divider/internal/divider-styles.cssresult.js:
+@material/web/dialog/internal/dialog-styles.cssresult.js:
+@material/web/tabs/internal/tabs-styles.cssresult.js:
+@material/web/tabs/internal/primary-tab-styles.cssresult.js:
+@material/web/tabs/internal/tab-styles.cssresult.js:
+  /**
+   * @license
+   * Copyright 2026 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
+
+@material/web/internal/controller/attachable-controller.js:
+@material/web/internal/aria/aria.js:
+@material/web/internal/aria/delegate.js:
+@material/web/labs/behaviors/element-internals.js:
+@material/web/labs/behaviors/form-associated.js:
+@material/web/internal/events/dispatch-hooks.js:
+@material/web/labs/behaviors/form-submitter.js:
+@material/web/labs/behaviors/constraint-validation.js:
+@material/web/labs/behaviors/on-report-validity.js:
+@material/web/labs/behaviors/validators/validator.js:
+@material/web/labs/behaviors/validators/text-field-validator.js:
+@material/web/labs/behaviors/validators/checkbox-validator.js:
+@material/web/slider/internal/slider.js:
+@material/web/slider/slider.js:
+@material/web/divider/internal/divider.js:
+@material/web/divider/divider.js:
+@material/web/dialog/internal/animations.js:
+@material/web/dialog/internal/dialog.js:
+@material/web/dialog/dialog.js:
+@material/web/labs/behaviors/focusable.js:
+@material/web/tabs/internal/tab.js:
+@material/web/tabs/internal/tabs.js:
+@material/web/tabs/tabs.js:
+@material/web/tabs/internal/primary-tab.js:
+@material/web/tabs/primary-tab.js:
+  /**
+   * @license
+   * Copyright 2023 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
+
+@material/web/focus/internal/focus-ring.js:
+@material/web/focus/md-focus-ring.js:
+@material/web/internal/motion/animation.js:
+@material/web/internal/events/form-label-activation.js:
+@material/web/button/internal/filled-button.js:
+@material/web/button/filled-button.js:
+@material/web/button/internal/outlined-button.js:
+@material/web/button/outlined-button.js:
+@material/web/button/internal/text-button.js:
+@material/web/button/text-button.js:
+@material/web/field/internal/field.js:
+@material/web/field/internal/outlined-field.js:
+@material/web/field/outlined-field.js:
+@material/web/internal/events/redispatch-event.js:
+@material/web/textfield/internal/text-field.js:
+@material/web/textfield/internal/outlined-text-field.js:
+@material/web/textfield/outlined-text-field.js:
+@material/web/switch/internal/switch.js:
+@material/web/switch/switch.js:
+  /**
+   * @license
+   * Copyright 2021 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
+
+lit-html/directives/class-map.js:
+lit-html/directives/style-map.js:
+  /**
+   * @license
+   * Copyright 2018 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+@material/web/button/internal/button.js:
+@material/web/checkbox/internal/checkbox.js:
+  /**
+   * @license
+   * Copyright 2019 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
+
+lit-html/static.js:
+lit-html/directive-helpers.js:
+lit-html/directives/live.js:
+  /**
+   * @license
+   * Copyright 2020 Google LLC
+   * SPDX-License-Identifier: BSD-3-Clause
+   */
+
+@material/web/checkbox/checkbox.js:
+  /**
+   * @license
+   * Copyright 2018 Google LLC
+   * SPDX-License-Identifier: Apache-2.0
+   */
