@@ -1,26 +1,57 @@
-name: CI
-
+name: Build and release
 on:
   push:
-    branches: ["**"]
-  pull_request:
+    branches: ['**']
   workflow_dispatch:
-
+permissions:
+  contents: write
+concurrency:
+  group: delivery-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  build:
-    runs-on: windows-latest
-
+  delivery:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      BUILD_VERSION: 1.0.${{ github.run_number }}
     steps:
-      - name: Checkout repository
+      - name: Checkout exact source
         uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
-
-      - name: Restore
-        run: dotnet restore WinSshCopyId.sln -p:Platform=x64
-
-      - name: Build (Release, x64)
-        run: dotnet build WinSshCopyId.sln -c Release -p:Platform=x64 --no-restore
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build self-contained application
+        shell: cmd
+        run: build.bat /s
+      - name: Package unsigned Squirrel installer
+        shell: cmd
+        run: build-installer.bat /s
+      - name: Publish verified normal release from main
+        if: github.ref == 'refs/heads/main'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: ./scripts/release.ps1 -SourceCommit '${{ github.sha }}' -Repository '${{ github.repository }}' -RunId '${{ github.run_id }}' -RunAttempt '${{ github.run_attempt }}'
+      - name: Collect safe build evidence
+        if: ${{ always() }}
+        continue-on-error: true
+        shell: powershell
+        env:
+          DELIVERY_JOB_STATUS: ${{ job.status }}
+        run: |
+          New-Item -ItemType Directory -Force artifacts/evidence | Out-Null
+          @{runId='${{ github.run_id }}';sourceCommit='${{ github.sha }}';jobStatus=$env:DELIVERY_JOB_STATUS;runner='windows-2022';runAttempt='${{ github.run_attempt }}'} | ConvertTo-Json | Set-Content artifacts/evidence/run.json
+          Get-ChildItem artifacts/*-receipt.json -ErrorAction SilentlyContinue | Copy-Item -Destination artifacts/evidence
+      - name: Upload safe installer and evidence outputs
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/releases/Setup.exe
+            artifacts/releases/RELEASES
+            artifacts/releases/*-full.nupkg
+            artifacts/evidence/*.json
+          if-no-files-found: warn
+          retention-days: 7
