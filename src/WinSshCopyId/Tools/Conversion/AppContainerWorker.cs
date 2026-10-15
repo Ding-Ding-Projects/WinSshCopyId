@@ -52,7 +52,9 @@ public static class AppContainerWorker
         if (!request.PackageMemberSha256.TryGetValue("WinSshCopyId.ToolWorker.exe", out var executableHash))
             throw new InvalidDataException("Worker executable is not in the package manifest.");
         var profile = "WinSshCopyId.Conversion." + Guid.NewGuid().ToString("N");
-        IntPtr sid = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero, job = IntPtr.Zero, environment = IntPtr.Zero;
+        IntPtr sid = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero, job = IntPtr.Zero, environment = IntPtr.Zero,
+            handles = IntPtr.Zero, nullInput = IntPtr.Zero;
+        FileStream? diagnostics = null;
         PROCESS_INFORMATION process = default;
         bool createdProfile = false;
         try
@@ -78,17 +80,27 @@ public static class AppContainerWorker
             var outputDirectory = Path.Combine(stage, "result");
             if (Directory.Exists(outputDirectory)) throw new IOException("Result directory must be newly created.");
             Directory.CreateDirectory(outputDirectory);
-            ApplyAcl(outputDirectory, $"D:P(A;OICI;FA;;;OW)(A;OICI;0x1301bf;;;{sidText})");
+            ApplyAcl(outputDirectory, $"D:P(A;OICI;FA;;;OW)(A;OICI;0x1301bf;;;{sidText})S:(ML;OICI;NW;;;LW)", true);
             output = Path.Combine(outputDirectory, "output.bin");
             var size = IntPtr.Zero;
-            InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
+            InitializeProcThreadAttributeList(IntPtr.Zero, 2, 0, ref size);
             attributes = Marshal.AllocHGlobal(size);
-            Check(InitializeProcThreadAttributeList(attributes, 1, 0, ref size));
+            Check(InitializeProcThreadAttributeList(attributes, 2, 0, ref size));
             capabilities = Marshal.AllocHGlobal(Marshal.SizeOf<SECURITY_CAPABILITIES>());
             Marshal.StructureToPtr(new SECURITY_CAPABILITIES { AppContainerSid = sid, CapabilityCount = 0, Capabilities = IntPtr.Zero }, capabilities, false);
             Check(UpdateProcThreadAttribute(attributes, 0, (IntPtr)0x20009, capabilities,
                 (IntPtr)Marshal.SizeOf<SECURITY_CAPABILITIES>(), IntPtr.Zero, IntPtr.Zero));
-            var startup = new STARTUPINFOEX { StartupInfo = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFOEX>() }, lpAttributeList = attributes };
+            var diagnosticPath = Path.Combine(outputDirectory, "worker-diagnostics.txt");
+            diagnostics = new FileStream(diagnosticPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite);
+            var diagnosticHandle = diagnostics.SafeFileHandle.DangerousGetHandle();
+            Check(SetHandleInformation(diagnosticHandle, 1, 1));
+            nullInput = CreateFileW("NUL", 0x80000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
+            Check(nullInput != new IntPtr(-1)); Check(SetHandleInformation(nullInput, 1, 1));
+            handles = Marshal.AllocHGlobal(IntPtr.Size * 2);
+            Marshal.WriteIntPtr(handles, diagnosticHandle); Marshal.WriteIntPtr(handles, IntPtr.Size, nullInput);
+            Check(UpdateProcThreadAttribute(attributes, 0, (IntPtr)0x20002, handles, (IntPtr)(IntPtr.Size * 2), IntPtr.Zero, IntPtr.Zero));
+            var startup = new STARTUPINFOEX { StartupInfo = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFOEX>(),
+                dwFlags = 0x100, hStdInput = nullInput, hStdOutput = diagnosticHandle, hStdError = diagnosticHandle }, lpAttributeList = attributes };
             job = CreateJobObjectW(IntPtr.Zero, null); Check(job != IntPtr.Zero);
             var limits = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION
             {
@@ -100,11 +112,21 @@ public static class AppContainerWorker
             // Do not inherit credentials or unrelated runtime configuration through the parent's environment.
             var systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
             if (string.IsNullOrEmpty(systemRoot)) throw new IOException("Windows directory is unavailable.");
-            environment = Marshal.StringToHGlobalUni(string.Join('\0', new[] {
-                "DOTNET_EnableDiagnostics=0", "DOTNET_MULTILEVEL_LOOKUP=0", "SystemRoot=" + systemRoot,
-                "TEMP=" + outputDirectory, "TMP=" + outputDirectory, "WINDIR=" + systemRoot }) + "\0\0");
+            var environmentValues = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["DOTNET_EnableDiagnostics"] = "0", ["DOTNET_MULTILEVEL_LOOKUP"] = "0", ["SystemRoot"] = systemRoot,
+                ["TEMP"] = outputDirectory, ["TMP"] = outputDirectory, ["WINDIR"] = systemRoot,
+                ["USERPROFILE"] = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ["LOCALAPPDATA"] = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                ["APPDATA"] = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                ["ProgramData"] = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                ["ALLUSERSPROFILE"] = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                ["SystemDrive"] = Path.GetPathRoot(systemRoot)!.TrimEnd('\\'),
+                ["PATH"] = Environment.SystemDirectory
+            };
+            environment = Marshal.StringToHGlobalUni(string.Join('\0', environmentValues.Select(x => x.Key + "=" + x.Value)) + "\0\0");
             var command = new StringBuilder(Quote(executable) + " --verify-managed " + Quote(request.AdapterId) + " " + Quote(input) + " " + Quote(output));
-            Check(CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, false, 0x80000 | 0x4 | 0x08000000 | 0x400,
+            Check(CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, true, 0x80000 | 0x4 | 0x08000000 | 0x400,
                 environment, package, ref startup, out process));
             Check(AssignProcessToJobObject(job, process.hProcess));
             Check(ResumeThread(process.hThread) != uint.MaxValue);
@@ -113,7 +135,12 @@ public static class AppContainerWorker
             while (WaitForSingleObject(process.hProcess, 0) == 0x102)
             { deadline.Token.ThrowIfCancellationRequested(); await Task.Delay(100, deadline.Token); }
             Check(GetExitCodeProcess(process.hProcess, out var exitCode));
-            if (exitCode != 0) throw new IOException("Confined worker did not complete successfully.");
+            diagnostics.Dispose(); diagnostics = null;
+            if (exitCode != 0)
+            {
+                var detail = new FileInfo(diagnosticPath).Length <= 4096 ? await File.ReadAllTextAsync(diagnosticPath, token) : "Diagnostics exceeded the bounded display limit.";
+                throw new IOException("Confined worker exited with code " + exitCode + " (0x" + exitCode.ToString("X8") + "). " + detail.Trim());
+            }
             RejectReparseAncestors(output);
             if (new FileInfo(output).Length > LocalConverter.MaximumOutputBytes) throw new InvalidDataException("Confined output exceeded its byte limit.");
             // The pinned worker validates its output before atomic promotion. The parent
@@ -123,14 +150,28 @@ public static class AppContainerWorker
         finally
         {
             // Closing a kill-on-close job kills only this launch. Wait for the exact process before freeing its profile.
+            Exception? teardownFailure = null;
             if (job != IntPtr.Zero) CloseHandle(job);
-            if (process.hProcess != IntPtr.Zero) { TerminateProcess(process.hProcess, 125); WaitForSingleObject(process.hProcess, 10000); CloseHandle(process.hProcess); }
+            if (process.hProcess != IntPtr.Zero)
+            {
+                TerminateProcess(process.hProcess, 125);
+                if (WaitForSingleObject(process.hProcess, 10000) != 0) teardownFailure = new IOException("Confined worker termination was not confirmed.");
+                CloseHandle(process.hProcess);
+            }
             if (process.hThread != IntPtr.Zero) CloseHandle(process.hThread);
             if (attributes != IntPtr.Zero) { DeleteProcThreadAttributeList(attributes); Marshal.FreeHGlobal(attributes); }
             if (capabilities != IntPtr.Zero) Marshal.FreeHGlobal(capabilities);
             if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
+            diagnostics?.Dispose();
+            if (handles != IntPtr.Zero) Marshal.FreeHGlobal(handles);
+            if (nullInput != IntPtr.Zero && nullInput != new IntPtr(-1)) CloseHandle(nullInput);
             if (sid != IntPtr.Zero) FreeSid(sid);
-            if (createdProfile) DeleteAppContainerProfile(profile);
+            if (createdProfile)
+            {
+                var removal = DeleteAppContainerProfile(profile);
+                if (removal < 0) teardownFailure = new IOException("Confined profile removal was not confirmed.", Marshal.GetExceptionForHR(removal));
+            }
+            if (teardownFailure is not null) throw teardownFailure;
         }
     }
 
@@ -149,17 +190,18 @@ public static class AppContainerWorker
     private static async Task<bool> MatchesAsync(string path, string expected, CancellationToken token)
         => expected.Length == 64 && expected.All(Uri.IsHexDigit) && (await HashAsync(path, token)).Equals(expected, StringComparison.OrdinalIgnoreCase);
     private static void Check(bool success) { if (!success) throw new Win32Exception(Marshal.GetLastWin32Error()); }
-    private static void ApplyAcl(string path, string sddl)
+    private static void ApplyAcl(string path, string sddl, bool lowIntegrity = false)
     {
         Check(ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, out var descriptor, out _));
         try
         {
-            Check(SetFileSecurityW(path, 4 | 0x80000000, descriptor));
-            GetFileSecurityW(path, 4, IntPtr.Zero, 0, out var needed);
+            var information = 4u | (lowIntegrity ? 0x10u : 0);
+            Check(SetFileSecurityW(path, information | 0x80000000, descriptor));
+            GetFileSecurityW(path, information, IntPtr.Zero, 0, out var needed);
             var readback = Marshal.AllocHGlobal((int)needed);
             try
             {
-                Check(GetFileSecurityW(path, 4, readback, needed, out _));
+                Check(GetFileSecurityW(path, information, readback, needed, out _));
                 Check(GetSecurityDescriptorDacl(descriptor, out var expectedPresent, out var expectedAcl, out _));
                 Check(GetSecurityDescriptorDacl(readback, out var actualPresent, out var actualAcl, out _));
                 if (!expectedPresent || !actualPresent || expectedAcl == IntPtr.Zero || actualAcl == IntPtr.Zero)
@@ -169,6 +211,18 @@ public static class AppContainerWorker
                 var expectedBytes = new byte[expectedSize]; var actualBytes = new byte[actualSize];
                 Marshal.Copy(expectedAcl, expectedBytes, 0, expectedSize); Marshal.Copy(actualAcl, actualBytes, 0, actualSize);
                 if (!expectedBytes.AsSpan().SequenceEqual(actualBytes)) throw new IOException("Staging ACL readback mismatch.");
+                if (lowIntegrity)
+                {
+                    Check(GetSecurityDescriptorSacl(descriptor, out var expectedLabelPresent, out var expectedLabel, out _));
+                    Check(GetSecurityDescriptorSacl(readback, out var actualLabelPresent, out var actualLabel, out _));
+                    if (!expectedLabelPresent || !actualLabelPresent || expectedLabel == IntPtr.Zero || actualLabel == IntPtr.Zero)
+                        throw new IOException("Result integrity label is missing.");
+                    var expectedLabelBytes = new byte[(ushort)Marshal.ReadInt16(expectedLabel, 2)];
+                    var actualLabelBytes = new byte[(ushort)Marshal.ReadInt16(actualLabel, 2)];
+                    Marshal.Copy(expectedLabel, expectedLabelBytes, 0, expectedLabelBytes.Length);
+                    Marshal.Copy(actualLabel, actualLabelBytes, 0, actualLabelBytes.Length);
+                    if (!expectedLabelBytes.AsSpan().SequenceEqual(actualLabelBytes)) throw new IOException("Result integrity-label readback mismatch.");
+                }
             }
             finally { Marshal.FreeHGlobal(readback); }
         }
@@ -195,6 +249,7 @@ public static class AppContainerWorker
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] private static extern bool SetFileSecurityW(string path, uint information, IntPtr descriptor);
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] private static extern bool GetFileSecurityW(string path, uint information, IntPtr descriptor, uint length, out uint needed);
     [DllImport("advapi32.dll", SetLastError = true)] private static extern bool GetSecurityDescriptorDacl(IntPtr descriptor, out bool present, out IntPtr dacl, out bool defaulted);
+    [DllImport("advapi32.dll", SetLastError = true)] private static extern bool GetSecurityDescriptorSacl(IntPtr descriptor, out bool present, out IntPtr sacl, out bool defaulted);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool InitializeProcThreadAttributeList(IntPtr list, int count, uint flags, ref IntPtr size);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool UpdateProcThreadAttribute(IntPtr list, uint flags, IntPtr attribute, IntPtr value, IntPtr size, IntPtr previous, IntPtr returned);
@@ -208,4 +263,6 @@ public static class AppContainerWorker
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool GetExitCodeProcess(IntPtr process, out uint code);
     [DllImport("kernel32.dll")] private static extern bool TerminateProcess(IntPtr process, uint code);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)] private static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
 }
