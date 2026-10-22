@@ -1,7 +1,14 @@
+function Resolve-ReleaseExecutable([string]$Name) {
+  $candidate=Get-Command $Name -CommandType Application -ErrorAction Stop | Select-Object -First 1
+  $path=[IO.Path]::GetFullPath([string]$candidate.Source)
+  if(![IO.Path]::IsPathRooted($path) -or !(Test-Path -LiteralPath $path -PathType Leaf) -or [IO.Path]::GetExtension($path) -ine '.exe') {throw "Release executable is not a verified native application: $Name"}
+  return $path
+}
 function ConvertTo-ReleaseArgument([string]$Value) {
   return '"'+(($Value -replace '(\\*)"','$1$1\"') -replace '(\\+)$','$1$1')+'"'
 }
 function Invoke-ReleaseProcess([string]$File,[string[]]$Arguments,[int]$TimeoutSeconds=120) {
+  if(![IO.Path]::IsPathRooted($File) -or !(Test-Path -LiteralPath $File -PathType Leaf)) {throw 'Release executable path must name one existing absolute file.'}
   $start=New-Object Diagnostics.ProcessStartInfo
   $start.FileName=$File;$start.Arguments=($Arguments|ForEach-Object {ConvertTo-ReleaseArgument $_}) -join ' '
   $start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -25,3 +32,4 @@ function Assert-ReleaseAbsent([string]$Tag,[string]$Repository) {
   if($result.ExitCode -eq 0) {throw 'Immutable release tag already exists; no overwrite is permitted.'}
   if($result.ExitCode -ne 1 -or $result.Output.Trim().Length -ne 0 -or $result.Error.Trim() -cne 'release not found') {throw "Release existence could not be established; CLI exit $($result.ExitCode)."}
 }
+

@@ -7,10 +7,11 @@ function Get-FileHash([string]$LiteralPath,[string]$Algorithm='SHA256') {
   try {[pscustomobject]@{Hash=([BitConverter]::ToString($digest.ComputeHash($stream))).Replace('-','')}} finally {$stream.Dispose();$digest.Dispose()}
 }
 . (Join-Path $PSScriptRoot 'release-cli.ps1')
-$script:ReleaseGhExecutable=(Get-Command gh -CommandType Application -ErrorAction Stop).Source
+$script:ReleaseGhExecutable=Resolve-ReleaseExecutable 'gh'
+$releaseGitExecutable=Resolve-ReleaseExecutable 'git'
 if($SourceCommit -notmatch '^[a-f0-9]{40}$' -or $RunId -notmatch '^\d+$' -or $RunAttempt -notmatch '^\d+$') {throw 'Invalid exact source or run identity.'}
 if((& git rev-parse HEAD).Trim() -ne $SourceCommit -or @(& git status --porcelain).Count -ne 0) {throw 'Publisher requires unchanged exact source.'}
-$fetch=Invoke-ReleaseProcess (Get-Command git -CommandType Application).Source @('fetch','origin','main','--no-tags')
+$fetch=Invoke-ReleaseProcess $releaseGitExecutable @('fetch','origin','main','--no-tags')
 if($fetch.ExitCode -ne 0) {throw 'Cannot verify main lineage.'}
 $mainBase=(& git merge-base $SourceCommit origin/main).Trim()
 if($LASTEXITCODE -ne 0 -or !$mainBase) {throw 'Cannot prove candidate main lineage.'}
@@ -53,6 +54,7 @@ Invoke-Gh @('release','download',$tag,'--repo',$Repository,'--dir',$verify) | Ou
 foreach($asset in $receipt.assets) {if((Get-FileHash -LiteralPath (Join-Path $verify $asset.name) -Algorithm SHA256).Hash -ne $asset.sha256) {throw 'Published download hash mismatch.'}}
 @{tag=$tag;sourceCommit=$SourceCommit;url=$release.url;isDraft=$release.isDraft;isPrerelease=$release.isPrerelease;verifiedAssets=$receipt.assets} | ConvertTo-Json -Depth 6 | Set-Content artifacts/release-receipt.json
 Write-Host "Verified normal release: $($release.url)"
+
 
 
 
